@@ -52,9 +52,9 @@ export default function ScenariosPage() {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Scenarios</h1>
           <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-            Pick a situation, warm up your mic, then open the live tutor. Configure{" "}
-            <code className="text-zinc-300">GOOGLE_GENAI_API_KEY</code> and optional{" "}
-            <code className="text-zinc-300">AWS_S3_BUCKET</code> for audio chunks.
+            Pick a situation, warm up your mic, then open the live tutor.             Configure <code className="text-zinc-300">GOOGLE_GENAI_API_KEY</code> for Live. For
+            audio chunks use <code className="text-zinc-300">AUDIO_STORAGE_BACKEND=local</code> or
+            AWS S3 (see README).
           </p>
         </div>
         <Link
