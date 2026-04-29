@@ -1,0 +1,19 @@
+# Local Postgres for development — optional
+# Start: docker compose up -d
+# DATABASE_URL=postgresql://camille:camille@localhost:5432/camille
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: camille
+      POSTGRES_PASSWORD: camille
+      POSTGRES_DB: camille
+    volumes:
+      - camille_pg:/var/lib/postgresql/data
+
+volumes:
+  camille_pg:
