@@ -1,3 +1,4 @@
+import { StartPractice } from "./start-practice";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { headers } from "next/headers";
@@ -25,9 +26,7 @@ export default async function DashboardPage() {
         <span className="text-zinc-200">{settings.startingCefr}</span> · Daily target:{" "}
         <span className="text-zinc-200">{settings.dailyTargetMinutes} min</span>
       </p>
-      <p className="mt-8 text-sm text-zinc-500">
-        Next: scenario library and live session (M1–M2 in the implementation plan).
-      </p>
+      <StartPractice />
     </main>
   );
 }

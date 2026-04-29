@@ -24,7 +24,9 @@ export default async function AppShellLayout({
           <Link href="/dashboard" className="hover:text-zinc-100">
             Home
           </Link>
-          <span className="text-zinc-600">Scenarios (soon)</span>
+          <Link href="/scenarios" className="hover:text-zinc-100">
+            Scenarios
+          </Link>
           <span className="truncate text-zinc-500" title={session.user.email}>
             {session.user.email}
           </span>
