@@ -37,6 +37,14 @@ Next.js 16 app (see `docs/PRD.md` and `docs/IMPLEMENTATION_PLAN.md`).
 
 4. Open [http://localhost:3000](http://localhost:3000) — sign up, complete onboarding, open the dashboard.
 
+## Using Camille for learning (dogfood v0)
+
+The **implementation plan** (`docs/IMPLEMENTATION_PLAN.md`, §Progress + “Focus — ready to learn”) tracks what “good enough to practise daily” means versus the full PRD.
+
+- **Minimum env:** `DATABASE_URL`, `BETTER_AUTH_*`, `GOOGLE_GENAI_API_KEY`, and **`AUDIO_STORAGE_BACKEND=local`** for friction-free session audio while you validate the product.
+- **Practice loop:** Dashboard → live call (text + captions by default) → end → transcript / history. **`/settings`** updates prompts via `UserSettings`; **`/progress`** shows a simple weekly snapshot.
+- **Manual QA:** follow **`docs/qa/dogfood-checklist.md`** before a learning sprint or demo.
+
 ## Scripts
 
 | Command           | Description                |

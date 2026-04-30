@@ -33,6 +33,12 @@ export default async function AppShellLayout({
           <Link href="/history" className="transition-colors hover:text-ink">
             History
           </Link>
+          <Link href="/progress" className="transition-colors hover:text-ink">
+            Progress
+          </Link>
+          <Link href="/settings" className="transition-colors hover:text-ink">
+            Settings
+          </Link>
           <span className="hidden text-rule-2 sm:inline">·</span>
           <span className="max-w-[200px] truncate text-mute-2" title={session.user.email}>
             {session.user.email}

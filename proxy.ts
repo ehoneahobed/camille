@@ -25,5 +25,9 @@ export const config = {
     "/sessions/:path*",
     "/history",
     "/history/:path*",
+    "/progress",
+    "/progress/:path*",
+    "/settings",
+    "/settings/:path*",
   ],
 };

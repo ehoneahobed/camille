@@ -1,6 +1,6 @@
 # Camille — Implementation Plan
 
-**Version:** 1.2  
+**Version:** 1.3  
 **Aligned with:** [PRD v2.1](./PRD.md)  
 **Purpose:** Ordered, actionable tasks to start coding. Use checkboxes in your tracker or convert to GitHub Issues / Linear.
 
@@ -10,7 +10,7 @@
 - **Deps** — `→` means “blocked until … completes”.  
 - **ADR** — short architecture decision record in `docs/adr/` when noted.
 
-### Progress (as of 2026-04-28)
+### Progress (as of 2026-04-28 — **dogfood / daily learning**)
 
 
 | Phase             | Status                                                                                                                                                                                                                                                                                                                                                          |
@@ -20,7 +20,15 @@
 | M1 — Live + turns | **Mostly done** — server token, `PracticeSession` APIs, `(immersive)/live/[sessionId]` + `components/live/live-session-panel.tsx` (Google GenAI Web), turn persistence, dashboard start. **Remaining for full M1 acceptance:** wire **microphone → Live** (M1-T06), optional **debounced batch flush** (M1-T07 uses turn boundaries today), manual ≥60s test. See `docs/adr/002-browser-audio-live.md`. |
 | M2 — Audio + UX   | **Mostly done** — presign API, `useSessionRecorder`, mic pre-session + VU, scenarios grid + filters, live shell (timer, gloss, captions, help stubs), complete + transcript pages, `MAX_SESSION_MINUTES` on token mint, single-chunk finalize + ADR-003. **Follow-up:** multi-chunk remux worker, full concat before production scale, S3 lifecycle in infra. |
 | M3 — Diagnostics  | **In progress** — `POST /api/sessions/[id]/diagnose`, `after()` runner + stub JSON, guards (`audioS3Key` + turns), `/history`, `/sessions/[id]/diagnostic` (tabs + poll), transcript/complete wiring, optional `GET /api/cron/diagnostics`, ADR-004. **Remaining:** Azure pronunciation + Gemini grammar/vocab (M3-T05–T09), ADR-005 reference text. |
+| **Dogfood v0**    | **Active** — Goal: ship a **credible daily practice loop** before chasing full PRD “Must” table. Checklist: `docs/qa/dogfood-checklist.md`. Env: `DATABASE_URL`, `BETTER_AUTH_*`, `GOOGLE_GENAI_API_KEY`; recommend **`AUDIO_STORAGE_BACKEND=local`** until S3+CORS are verified. Live defaults to **TEXT** modality (M1-T06 = mic → model audio still open). |
 
+
+### Focus — What “ready to learn” means right now
+
+1. **Account & data** — Postgres migrated; sign-up / sign-in / onboarding / **Settings** (`/settings`) persist `UserSettings` used when minting Live tokens.  
+2. **Practice loop** — Dashboard → start session → mic check → **immersive live** (Gemini Live + turns + optional **local** session audio) → end → complete / transcript / history.  
+3. **Feedback loop** — Diagnostics UI works with **stub scores** until M3-T05–T09; still useful to rehearse “session → review” behaviour.  
+4. **Honest gaps** — Typed + caption conversation is the reliable path today; **set `GEMINI_LIVE_RESPONSE_MODALITIES=TEXT,AUDIO` only after** validating browser + model audio per ADR-002. Streak / heatmaps / gloss / help intents remain M4.
 
 ---
 
@@ -203,7 +211,7 @@ flowchart LR
 
 - **M1-T04** — Route `(immersive)/live/[sessionId]/page.tsx` + dashboard start → `POST /api/sessions` → navigate.  
 - **M1-T05** — On mount: fetch token; initialise **Google GenAI** Live session in browser per ADR-001.  
-- **M1-T06** — Wire microphone; confirm audio playback from model. *(TEXT modality path shipped; mic + native duplex next.)*  
+- **M1-T06** — Wire microphone; confirm audio playback from model. *(Mic captured for VU + **local** `MediaRecorder` chunks; Live channel defaults to **TEXT** for reliable dogfood — set `GEMINI_LIVE_RESPONSE_MODALITIES=TEXT,AUDIO` only after ADR-002 validation.)*  
 - **M1-T07** — Capture transcript snippets from SDK events → debounced flush to `POST .../turns` (interval N seconds + on unmount). *(Flush on `turnComplete` + send today; add timer/unmount batch if desired.)*  
 - **M1-T08** — `PATCH /api/sessions/[id]` — set `ENDED`, `endedAt`; reject if not owner.
 
@@ -300,24 +308,24 @@ flowchart LR
 
 ### 8.1 Home and navigation
 
-- **M4-T01** — `(app)/page.tsx` — dashboard: weekly minutes (sum `endedAt - startedAt` for week), streak SQL or computed, recent sessions query.  
+- **M4-T01** — `(app)/page.tsx` — dashboard: weekly minutes (sum `endedAt - startedAt` for week), streak SQL or computed, recent sessions query. *(Rolling 7-day minutes + recent list shipped on **`/dashboard`**; root `(app)/page` not required for dogfood.)*  
 - **M4-T02** — “Loose end” block: read last `DONE` diagnostic top issue (requires small query helper).  
-- **M4-T03** — App nav matches prototype labels (Home, Scenarios, Progress, History, Settings).
+- **M4-T03** — App nav matches prototype labels (Home, Scenarios, Progress, History, Settings). *(Nav links shipped; polish active states / Progress depth = M4-T04.)*
 
 ### 8.2 Progress **[Should]**
 
-- **M4-T04** — Progress page: heat grid (derive from sessions last 35 days), score chart from diagnostics, estimated level bar (simple heuristic from last N scores).
+- **M4-T04** — Progress page: heat grid (derive from sessions last 35 days), score chart from diagnostics, estimated level bar (simple heuristic from last N scores). *(**`/progress`** — rolling 7-day minutes + recent completed list for dogfood; charts later.)*
 
 ### 8.3 Settings
 
-- **M4-T05** — Settings page: edit `UserSettings` (voice, CEFR, daily target, reminders toggle, transcript toggle); save via Server Action.  
+- **M4-T05** — Settings page: edit `UserSettings` (voice, CEFR, daily target, reminders toggle, transcript toggle); save via Server Action. *(**`/settings`** — Server Action `updateUserSettings`; dogfood-ready.)*  
 - **M4-T06** — Account: email display; sign out; **[Could]** Stripe portal link.
 
 ### 8.4 Live session polish
 
 - **M4-T07** — Gloss modes fully wired to caption component.  
 - **M4-T08** — Help buttons send structured message to Live session (implement per ADR for “slow”, “repeat”, “what did she say”).  
-- **M4-T09** — **RPM avatar** lazy-loaded; fallback UI if WebGL fails **[Should]**.  
+- **M4-T09** — **RPM avatar** lazy-loaded; fallback UI if WebGL fails **[Should]**. *(RPM stage + fallback in live shell — shipped.)*  
 - **M4-T10** — Reconnect UX: toast + partial save on WS drop (PRD §12).
 
 ### 8.5 Landing + legal
@@ -392,10 +400,11 @@ Adjust to team size.
 | 1.0     | 2026-04-28 | Initial plan from PRD v2.1                                      |
 | 1.1     | 2026-04-28 | Progress tracker; M1 task checkboxes; live route path           |
 | 1.2     | 2026-04-28 | M2 progress + task checkboxes; S3 / pre-session / complete flow |
+| 1.3     | 2026-04-28 | Dogfood focus + checklist; `/settings` + `/progress`; plan notes for M4 partials |
 
 
 When scope shifts, update [PRD](./PRD.md) first, then adjust this file’s phases and task list.
 
 ---
 
-*End of implementation plan v1.0*
+*End of implementation plan v1.3*
