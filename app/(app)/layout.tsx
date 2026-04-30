@@ -15,19 +15,26 @@ export default async function AppShellLayout({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
-      <header className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
-        <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
-          Camille<span className="text-orange-500">.</span>
+    <div className="flex min-h-screen flex-col bg-canvas text-ink">
+      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-rule px-6 py-4 sm:px-10">
+        <Link
+          href="/dashboard"
+          className="font-display-sm text-[20px] tracking-[-0.01em] text-ink transition-colors hover:text-wine"
+        >
+          Camille<span className="text-wine">.</span>
         </Link>
-        <nav className="flex items-center gap-6 text-sm text-zinc-400">
-          <Link href="/dashboard" className="hover:text-zinc-100">
+        <nav className="flex flex-wrap items-center gap-6 text-[13px] text-mute">
+          <Link href="/dashboard" className="transition-colors hover:text-ink">
             Home
           </Link>
-          <Link href="/scenarios" className="hover:text-zinc-100">
+          <Link href="/scenarios" className="transition-colors hover:text-ink">
             Scenarios
           </Link>
-          <span className="truncate text-zinc-500" title={session.user.email}>
+          <Link href="/history" className="transition-colors hover:text-ink">
+            History
+          </Link>
+          <span className="hidden text-rule-2 sm:inline">·</span>
+          <span className="max-w-[200px] truncate text-mute-2" title={session.user.email}>
             {session.user.email}
           </span>
           <SignOutButton />

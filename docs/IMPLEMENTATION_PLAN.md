@@ -12,12 +12,15 @@
 
 ### Progress (as of 2026-04-28)
 
-| Phase            | Status |
-| ---------------- | ------ |
-| P0 — Bootstrap   | Done   |
-| M0 — Foundation  | Done   |
+
+| Phase             | Status                                                                                                                                                                                                                                                                                                                                                          |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P0 — Bootstrap    | Done                                                                                                                                                                                                                                                                                                                                                            |
+| M0 — Foundation   | Done                                                                                                                                                                                                                                                                                                                                                            |
 | M1 — Live + turns | **Mostly done** — server token, `PracticeSession` APIs, `(app)/live/[sessionId]` client (Google GenAI Web), turn persistence, dashboard “Begin”. **Remaining for full M1 acceptance:** wire **microphone → Live** (M1-T06), optional **debounced batch flush** (M1-T07 uses turn boundaries today), manual ≥60s test. See `docs/adr/002-browser-audio-live.md`. |
-| M2 — Audio + UX | **In progress** — presign API, `useSessionRecorder`, mic pre-session + VU, scenarios grid + filters, live shell (timer, gloss, captions, help stubs), complete + transcript pages, `MAX_SESSION_MINUTES` on token mint, single-chunk finalize + ADR-003. **Follow-up:** multi-chunk remux worker, full concat before M3, S3 lifecycle in infra. |
+| M2 — Audio + UX   | **Mostly done** — presign API, `useSessionRecorder`, mic pre-session + VU, scenarios grid + filters, live shell (timer, gloss, captions, help stubs), complete + transcript pages, `MAX_SESSION_MINUTES` on token mint, single-chunk finalize + ADR-003. **Follow-up:** multi-chunk remux worker, full concat before production scale, S3 lifecycle in infra. |
+| M3 — Diagnostics  | **In progress** — `POST /api/sessions/[id]/diagnose`, `after()` runner + stub JSON, guards (`audioS3Key` + turns), `/history`, `/sessions/[id]/diagnostic` (tabs + poll), transcript/complete wiring, optional `GET /api/cron/diagnostics`, ADR-004. **Remaining:** Azure pronunciation + Gemini grammar/vocab (M3-T05–T09), ADR-005 reference text. |
+
 
 ---
 
@@ -186,32 +189,32 @@ flowchart LR
 
 ### 5.0 Spikes (blockers — do first)
 
-- [x] **M1-S01** — **ADR-001:** Document chosen Gemini Live model ID, SDK version, token mint flow (server-only API key). (`docs/adr/001-gemini-live-ephemeral-token.md`)  
-- [ ] **M1-S02** — **Spike:** `getUserMedia` → same stream → Gemini Live client + `MediaRecorder`; matrix Chrome/Safari/Firefox; note codecs; **ADR-002** outcome: supported browsers or workaround. *(ADR-002 documents current scope; full matrix deferred.)*  
-- [x] **M1-S03** — Implement `lib/providers/conversation.ts` + live token helper: types in `conversation.ts`, mint + system instruction in `lib/providers/gemini-live-token.ts` + `lib/prompts/live-system.ts`.
+- **M1-S01** — **ADR-001:** Document chosen Gemini Live model ID, SDK version, token mint flow (server-only API key). (`docs/adr/001-gemini-live-ephemeral-token.md`)  
+- **M1-S02** — **Spike:** `getUserMedia` → same stream → Gemini Live client + `MediaRecorder`; matrix Chrome/Safari/Firefox; note codecs; **ADR-002** outcome: supported browsers or workaround. *(ADR-002 documents current scope; full matrix deferred.)*  
+- **M1-S03** — Implement `lib/providers/conversation.ts` + live token helper: types in `conversation.ts`, mint + system instruction in `lib/providers/gemini-live-token.ts` + `lib/prompts/live-system.ts`.
 
 ### 5.1 API: sessions and token
 
-- [x] **M1-T01** — `POST /api/sessions` — body `{ scenarioId }`; auth required; create `PracticeSession` `IN_PROGRESS`; return `{ id }`.  
-- [x] **M1-T02** — `POST /api/realtime/token` — body `{ sessionId }`; verify session belongs to user and is `IN_PROGRESS`; call provider `mintToken`; rate-limit per user (simple in-memory or Upstash later).  
-- [x] **M1-T03** — `POST /api/sessions/[id]/turns` — append batch `{ turns: [{ index, role, text, lang?, kind?, occurredAt }] }`; validate monotonic `index`; auth + ownership.
+- **M1-T01** — `POST /api/sessions` — body `{ scenarioId }`; auth required; create `PracticeSession` `IN_PROGRESS`; return `{ id }`.  
+- **M1-T02** — `POST /api/realtime/token` — body `{ sessionId }`; verify session belongs to user and is `IN_PROGRESS`; call provider `mintToken`; rate-limit per user (simple in-memory or Upstash later).  
+- **M1-T03** — `POST /api/sessions/[id]/turns` — append batch `{ turns: [{ index, role, text, lang?, kind?, occurredAt }] }`; validate monotonic `index`; auth + ownership.
 
 ### 5.2 Client: single-scenario live page
 
-- [x] **M1-T04** — Route `(app)/live/[sessionId]/page.tsx` + dashboard **Begin** → `POST /api/sessions` → navigate.  
-- [x] **M1-T05** — On mount: fetch token; initialise **Google GenAI** Live session in browser per ADR-001.  
-- [ ] **M1-T06** — Wire microphone; confirm audio playback from model. *(TEXT modality path shipped; mic + native duplex next.)*  
-- [ ] **M1-T07** — Capture transcript snippets from SDK events → debounced flush to `POST .../turns` (interval N seconds + on unmount). *(Flush on `turnComplete` + send today; add timer/unmount batch if desired.)*  
-- [x] **M1-T08** — `PATCH /api/sessions/[id]` — set `ENDED`, `endedAt`; reject if not owner.
+- **M1-T04** — Route `(app)/live/[sessionId]/page.tsx` + dashboard **Begin** → `POST /api/sessions` → navigate.  
+- **M1-T05** — On mount: fetch token; initialise **Google GenAI** Live session in browser per ADR-001.  
+- **M1-T06** — Wire microphone; confirm audio playback from model. *(TEXT modality path shipped; mic + native duplex next.)*  
+- **M1-T07** — Capture transcript snippets from SDK events → debounced flush to `POST .../turns` (interval N seconds + on unmount). *(Flush on `turnComplete` + send today; add timer/unmount batch if desired.)*  
+- **M1-T08** — `PATCH /api/sessions/[id]` — set `ENDED`, `endedAt`; reject if not owner.
 
 ### 5.3 Prompting (minimal)
 
-- [x] **M1-T09** — Scenarios in `lib/scenarios/seed.ts`; system prompt in `lib/prompts/live-system.ts` (French-first, English bridge, CEFR + scenario frame).
+- **M1-T09** — Scenarios in `lib/scenarios/seed.ts`; system prompt in `lib/prompts/live-system.ts` (French-first, English bridge, CEFR + scenario frame).
 
 ### 5.4 M1 acceptance
 
-- [ ] Manual test: create session → token → **≥60s** conversation; turns visible in DB; session can end with `ENDED`.  
-- [x] Log `token_minted`, `session_started`, `session_ended`, `turn_batch_written` (console or analytics stub).
+- Manual test: create session → token → **≥60s** conversation; turns visible in DB; session can end with `ENDED`.  
+- Log `token_minted`, `session_started`, `session_ended`, `turn_batch_written` (console or analytics stub).
 
 ---
 
@@ -221,36 +224,36 @@ flowchart LR
 
 ### 6.1 S3 presigned uploads
 
-- [ ] **M2-T01** — AWS: S3 bucket, CORS for browser PUT from app origin, separate prefix per env (`dev/`, `prod/`). *(Documented in README + ADR-003; create in your AWS account.)*  
-- [ ] **M2-T02** — IAM user/role for server: `s3:PutObject` on `sessions/`*, no list bucket from client. *(Operational; app assumes credentials via default chain.)*  
-- [x] **M2-T03** — `POST /api/audio/presign` — body `{ sessionId, chunkIndex, contentType }`; return `{ url, key }`; key pattern `{S3_KEY_PREFIX}sessions/{sessionId}/chunks/{chunkIndex}.webm`.  
-- [x] **M2-T04** — Client `hooks/use-session-recorder.ts`: `MediaRecorder` timeslice ~5s; `PUT` each chunk; retry with backoff; `audio_chunk_uploaded` log.  
-- [x] **M2-T05** — **Concat / final object:** **ADR-003** — `after()` on session end runs finalize; single-chunk `CopyObject` → `audio.webm` + `audioS3Key`; multi-chunk deferred.  
-- [x] **M2-T06** — Document audio retention (30-day lifecycle on `sessions/` prefix) in ADR-003.
+- **M2-T01** — AWS: S3 bucket, CORS for browser PUT from app origin, separate prefix per env (`dev/`, `prod/`). *(Documented in README + ADR-003; create in your AWS account.)*  
+- **M2-T02** — IAM user/role for server: `s3:PutObject` on `sessions/`*, no list bucket from client. *(Operational; app assumes credentials via default chain.)*  
+- **M2-T03** — `POST /api/audio/presign` — body `{ sessionId, chunkIndex, contentType }`; return `{ url, key }`; key pattern `{S3_KEY_PREFIX}sessions/{sessionId}/chunks/{chunkIndex}.webm`.  
+- **M2-T04** — Client `hooks/use-session-recorder.ts`: `MediaRecorder` timeslice ~5s; `PUT` each chunk; retry with backoff; `audio_chunk_uploaded` log.  
+- **M2-T05** — **Concat / final object:** **ADR-003** — `after()` on session end runs finalize; single-chunk `CopyObject` → `audio.webm` + `audioS3Key`; multi-chunk deferred.  
+- **M2-T06** — Document audio retention (30-day lifecycle on `sessions/` prefix) in ADR-003.
 
 ### 6.2 Scenarios
 
-- [x] **M2-T07** — `lib/scenarios/seed.ts` — eight scenarios + `cefrBands` for filters.  
-- [x] **M2-T08** — `buildLiveSystemInstruction` / `getSystemPromptForLive` includes `voiceId` from `UserSettings` when minting Live token.  
-- [x] **M2-T09** — `(app)/scenarios/page.tsx` — grid + chips Any / A2 / B1 / B2 / C1.  
-- [x] **M2-T10** — Start from card → `POST /api/sessions` → `/live/{id}` (pre-session is first step inside live panel).
+- **M2-T07** — `lib/scenarios/seed.ts` — eight scenarios + `cefrBands` for filters.  
+- **M2-T08** — `buildLiveSystemInstruction` / `getSystemPromptForLive` includes `voiceId` from `UserSettings` when minting Live token.  
+- **M2-T09** — `(app)/scenarios/page.tsx` — grid + chips Any / A2 / B1 / B2 / C1.  
+- **M2-T10** — Start from card → `POST /api/sessions` → `/live/{id}` (pre-session is first step inside live panel).
 
 ### 6.3 Pre-session + live shell UX
 
-- [x] **M2-T11** — Pre-session inside live panel: `getUserMedia`, device label, VU meter (`AnalyserNode`).  
-- [x] **M2-T12** — Live top bar: scenario, timer, gloss **Off | Hover | Always**, Pause stub, End.  
-- [x] **M2-T13** — Caption strip: previous + current assistant draft.  
-- [x] **M2-T14** — Help buttons → toast placeholders (M4 wiring).  
-- [x] **M2-T15** — `/sessions/[id]/complete` — duration, turns, disabled diagnostic, transcript + home links.
+- **M2-T11** — Pre-session inside live panel: `getUserMedia`, device label, VU meter (`AnalyserNode`).  
+- **M2-T12** — Live top bar: scenario, timer, gloss **Off | Hover | Always**, Pause stub, End.  
+- **M2-T13** — Caption strip: previous + current assistant draft.  
+- **M2-T14** — Help buttons → toast placeholders (M4 wiring).  
+- **M2-T15** — `/sessions/[id]/complete` — duration, turns, disabled diagnostic, transcript + home links.
 
 ### 6.4 Session limits
 
-- [x] **M2-T16** — `MAX_SESSION_MINUTES` enforced on `POST /api/realtime/token`; client soft warning ~80% on live shell.
+- **M2-T16** — `MAX_SESSION_MINUTES` enforced on `POST /api/realtime/token`; client soft warning ~80% on live shell.
 
 ### 6.5 M2 acceptance
 
-- [ ] End-to-end: pick scenario → pre-session → live → end; DB has turns; S3 has chunks + final `audioS3Key` (or documented pending state until concat completes).  
-- [x] `audio_chunk_uploaded` events logged (browser + presign server log).
+- End-to-end: pick scenario → pre-session → live → end; DB has turns; S3 has chunks + final `audioS3Key` (or documented pending state until concat completes).  
+- `audio_chunk_uploaded` events logged (browser + presign server log).
 
 ---
 
@@ -260,10 +263,10 @@ flowchart LR
 
 ### 7.1 Job infrastructure
 
-- **M3-T01** — **ADR-004:** Job runner — Vercel Cron + DB poll vs Inngest vs Trigger.dev; idempotency rules.  
-- **M3-T02** — `POST /api/sessions/[id]/diagnose` — verify session `ENDED`, user owns; create/update `Diagnostic` `QUEUED`; return 202.  
-- **M3-T03** — Worker route/cron: pick `QUEUED`, set `RUNNING`, download audio from S3, run providers, set `DONE` or `FAILED` + `error`.  
-- **M3-T04** — Guard: no diagnose without `audioS3Key` + transcript rows.
+- **M3-T01** — **ADR-004:** Job runner — Vercel Cron + DB poll vs Inngest vs Trigger.dev; idempotency rules. *(ADR-004 + optional cron route shipped.)*  
+- **M3-T02** — `POST /api/sessions/[id]/diagnose` — verify session `ENDED`, user owns; create/update `Diagnostic` `QUEUED`; return 202. *(Shipped.)*  
+- **M3-T03** — Worker route/cron: pick `QUEUED`, set `RUNNING`, download audio from S3, run providers, set `DONE` or `FAILED` + `error`. *(Stub runner + `after()` + cron batch; real providers pending.)*  
+- **M3-T04** — Guard: no diagnose without `audioS3Key` + transcript rows. *(Shipped.)*
 
 ### 7.2 Azure pronunciation
 
@@ -278,10 +281,10 @@ flowchart LR
 
 ### 7.4 UI
 
-- **M3-T10** — `/history` — table: date, scenario, duration, diagnostic badge (Not run / Queued / Running / Done / Failed).  
-- **M3-T11** — `/session/[id]/review` or detail — full transcript; button Run diagnostic / Open diagnostic.  
-- **M3-T12** — Diagnostic results page: tabs **Pronunciation | Grammar | Vocabulary**; reuse prototype patterns (lists, annotated lines).  
-- **M3-T13** — Loading / error states; user can leave tab while `RUNNING` (poll `GET /api/sessions/[id]`).
+- **M3-T10** — `/history` — table: date, scenario, duration, diagnostic badge (Not run / Queued / Running / Done / Failed). *(Shipped.)*  
+- **M3-T11** — `/session/[id]/review` or detail — full transcript; button Run diagnostic / Open diagnostic. *(Transcript + complete + `/sessions/[id]/review` → transcript; polish later.)*  
+- **M3-T12** — Diagnostic results page: tabs **Pronunciation | Grammar | Vocabulary**; reuse prototype patterns (lists, annotated lines). *(Tabs + JSON placeholders shipped; richer layout later.)*  
+- **M3-T13** — Loading / error states; user can leave tab while `RUNNING` (poll `GET /api/sessions/[id]`). *(Shipped.)*
 
 ### 7.5 M3 acceptance
 
@@ -384,10 +387,10 @@ Adjust to team size.
 ## 12. Document control
 
 
-| Version | Date       | Changes                    |
-| ------- | ---------- | -------------------------- |
-| 1.0     | 2026-04-28 | Initial plan from PRD v2.1 |
-| 1.1     | 2026-04-28 | Progress tracker; M1 task checkboxes; live route path |
+| Version | Date       | Changes                                                         |
+| ------- | ---------- | --------------------------------------------------------------- |
+| 1.0     | 2026-04-28 | Initial plan from PRD v2.1                                      |
+| 1.1     | 2026-04-28 | Progress tracker; M1 task checkboxes; live route path           |
 | 1.2     | 2026-04-28 | M2 progress + task checkboxes; S3 / pre-session / complete flow |
 
 

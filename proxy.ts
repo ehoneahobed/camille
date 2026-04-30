@@ -23,5 +23,7 @@ export const config = {
     "/scenarios",
     "/scenarios/:path*",
     "/sessions/:path*",
+    "/history",
+    "/history/:path*",
   ],
 };
