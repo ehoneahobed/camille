@@ -18,13 +18,13 @@ export default async function DashboardPage() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="text-3xl font-semibold tracking-tight">Welcome back</h1>
-      <p className="mt-3 text-zinc-400">
-        You&apos;re signed in as <span className="text-zinc-200">{session.user.email}</span>.
-        Starting level:{" "}
-        <span className="text-zinc-200">{settings.startingCefr}</span> · Daily target:{" "}
-        <span className="text-zinc-200">{settings.dailyTargetMinutes} min</span>
+    <main className="mx-auto max-w-3xl px-6 py-12 sm:px-10">
+      <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-mute">Home</p>
+      <h1 className="mt-3 font-display text-3xl tracking-[-0.02em] text-ink sm:text-4xl">Welcome back</h1>
+      <p className="mt-4 text-[15px] leading-relaxed text-ink-2">
+        You&apos;re signed in as <span className="text-ink">{session.user.email}</span>. Starting
+        level <span className="text-ink">{settings.startingCefr}</span> · Daily target{" "}
+        <span className="text-ink">{settings.dailyTargetMinutes} min</span>
       </p>
       <StartPractice />
     </main>

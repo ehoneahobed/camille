@@ -1,5 +1,6 @@
 "use client";
 
+import { IconArrow } from "@/components/icons";
 import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -10,6 +11,9 @@ export function SignInForm() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState<"password" | "magic" | null>(null);
+
+  const inputClass =
+    "mt-3 w-full border-0 border-b border-rule-2 bg-transparent pb-3 font-display-sm text-[18px] text-ink outline-none transition-colors placeholder:text-mute-2 focus:border-ink";
 
   async function onPasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,50 +49,56 @@ export function SignInForm() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <form onSubmit={onPasswordSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-zinc-400">Email</span>
+    <div className="flex flex-col gap-8">
+      <form onSubmit={onPasswordSubmit} className="flex flex-col gap-8">
+        <label className="block">
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-mute">
+            Email address
+          </span>
           <input
             type="email"
             required
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-100 outline-none focus:border-zinc-500"
+            placeholder="you@example.com"
+            className={inputClass}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-zinc-400">Password</span>
+        <label className="block">
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-mute">Password</span>
           <input
             type="password"
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-100 outline-none focus:border-zinc-500"
+            className={inputClass}
           />
         </label>
-        <button
-          type="submit"
-          disabled={loading !== null}
-          className="rounded-full bg-zinc-100 py-2.5 text-sm font-medium text-zinc-950 disabled:opacity-50"
-        >
-          {loading === "password" ? "Signing in…" : "Sign in with password"}
-        </button>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            type="submit"
+            disabled={loading !== null}
+            className="inline-flex items-center justify-center gap-2 bg-ink px-6 py-3 text-[14px] font-medium tracking-[0.01em] text-canvas transition-colors hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {loading === "password" ? "Signing in…" : "Sign in with password"}
+            {loading === null ? <IconArrow size={14} /> : null}
+          </button>
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-mute">
+            Or magic link below
+          </span>
+        </div>
       </form>
-      <div className="relative text-center text-xs text-zinc-500">
-        <span className="bg-[#0a0a0a] px-2">or</span>
-      </div>
       <button
         type="button"
         disabled={loading !== null || !email}
-        onClick={onMagicLink}
-        className="rounded-full border border-zinc-600 py-2.5 text-sm font-medium text-zinc-200 hover:border-zinc-400 disabled:opacity-50"
+        onClick={() => void onMagicLink()}
+        className="inline-flex w-full items-center justify-center border border-rule-2 px-6 py-3 text-[14px] font-medium tracking-[0.01em] text-ink transition-colors hover:bg-canvas-2 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
       >
         {loading === "magic" ? "Sending…" : "Email me a magic link"}
       </button>
       {message ? (
-        <p className="text-center text-sm text-zinc-300" role="status">
+        <p className="text-center text-[14px] leading-relaxed text-ink-2" role="status">
           {message}
         </p>
       ) : null}

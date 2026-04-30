@@ -387,7 +387,7 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
     <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10">
       {toast ? (
         <p
-          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full border border-zinc-600 bg-zinc-900 px-4 py-2 text-sm text-zinc-100 shadow-lg"
+          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full border border-rule-2 bg-canvas-2 px-4 py-2 text-sm text-ink shadow-lg"
           role="status"
         >
           {toast}
@@ -395,27 +395,25 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
       ) : null}
 
       {phase === "live" ? (
-        <header className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <header className="flex flex-col gap-3 rounded-xl border border-rule bg-canvas-2/70 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-medium uppercase tracking-widest text-zinc-500">
-              Live
-            </p>
-            <h1 className="text-lg font-semibold text-zinc-50">{scenarioLabel}</h1>
-            <p className="text-xs text-zinc-500">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-mute">Live</p>
+            <h1 className="font-display-sm text-lg text-ink">{scenarioLabel}</h1>
+            <p className="text-xs text-mute">
               {formatElapsed(elapsedSec)} · max {maxMin} min
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-zinc-500">Gloss</span>
+            <span className="text-xs text-mute">Gloss</span>
             {(["off", "hover", "always"] as const).map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => setGlossMode(m)}
-                className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
+                className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors ${
                   glossMode === m
-                    ? "bg-orange-600 text-white"
-                    : "border border-zinc-700 text-zinc-300 hover:border-zinc-500"
+                    ? "bg-ink text-canvas"
+                    : "border border-rule-2 text-ink-2 hover:border-mute hover:text-ink"
                 }`}
               >
                 {m}
@@ -425,14 +423,14 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
               type="button"
               disabled
               title="Pause arrivera avec la reconnexion (M4)"
-              className="rounded-full border border-zinc-800 px-3 py-1 text-xs text-zinc-600"
+              className="rounded-full border border-rule px-3 py-1 text-xs text-mute-2"
             >
               Pause
             </button>
             <button
               type="button"
               onClick={() => void endSession()}
-              className="rounded-full border border-red-900/60 bg-red-950/40 px-3 py-1 text-xs font-medium text-red-200 hover:bg-red-950/70"
+              className="rounded-full border border-wine-soft bg-wine-soft/50 px-3 py-1 text-xs font-medium text-ink hover:bg-wine-soft/80"
             >
               End
             </button>
@@ -440,34 +438,32 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
         </header>
       ) : (
         <div>
-          <p className="text-xs font-medium uppercase tracking-widest text-zinc-500">
-            Before you start
-          </p>
-          <h1 className="mt-2 text-2xl font-semibold text-zinc-50">{scenarioLabel}</h1>
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-mute">Before you start</p>
+          <h1 className="mt-2 font-display text-2xl text-ink sm:text-3xl">{scenarioLabel}</h1>
         </div>
       )}
 
       {softWarn && phase === "live" ? (
-        <p className="rounded-lg border border-amber-900/50 bg-amber-950/30 px-3 py-2 text-sm text-amber-100">
+        <p className="rounded-lg border border-wine/40 bg-wine-soft/30 px-3 py-2 text-sm text-ink-2">
           Plus que ~{Math.max(1, Math.round(maxMin * 0.2))} minutes avant la limite de
           session — terminez ou enregistrez l&apos;essentiel.
         </p>
       ) : null}
 
       {prepareError ? (
-        <p className="rounded-lg border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+        <p className="rounded-lg border border-wine-soft bg-wine-soft/40 px-3 py-2 text-sm text-ink-2">
           {prepareError}
         </p>
       ) : null}
 
       {phase === "prepare" && !prepareError ? (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-6">
-          <p className="text-sm text-zinc-400">
+        <div className="rounded-xl border border-rule bg-canvas-2/60 p-6">
+          <p className="text-sm text-ink-2">
             Microphone: {deviceLabel || "Default device"} · niveau
           </p>
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-canvas-3">
             <div
-              className="h-full rounded-full bg-orange-500 transition-[width] duration-75"
+              className="h-full rounded-full bg-wine-2 transition-[width] duration-75"
               style={{ width: `${Math.min(100, vuLevel * 400)}%` }}
             />
           </div>
@@ -475,7 +471,7 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
             type="button"
             disabled={!mediaStream}
             onClick={() => setPhase("live")}
-            className="mt-6 rounded-full bg-orange-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-orange-500 disabled:opacity-40"
+            className="mt-6 inline-flex bg-ink px-6 py-2.5 text-sm font-medium text-canvas transition-colors hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Start conversation
           </button>
@@ -485,63 +481,63 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
       {phase === "live" ? (
         <>
           {error ? (
-            <p className="rounded-lg border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+            <p className="rounded-lg border border-wine-soft bg-wine-soft/40 px-3 py-2 text-sm text-ink-2">
               {error}
             </p>
           ) : null}
 
           {uploadError ? (
-            <p className="rounded-lg border border-amber-900/50 bg-amber-950/30 px-3 py-2 text-sm text-amber-100">
+            <p className="rounded-lg border border-wine/40 bg-wine-soft/30 px-3 py-2 text-sm text-ink-2">
               Audio upload: {uploadError}
             </p>
           ) : null}
 
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-mute">
             {statusLine}
             {uploadedMaxIndex >= 0 ? ` · chunks uploaded: 0–${uploadedMaxIndex}` : null}
           </p>
 
-          <section className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4">
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Captions</p>
+          <section className="rounded-lg border border-rule bg-canvas-3/80 p-4">
+            <p className="text-xs uppercase tracking-wide text-mute">Captions</p>
             {lastAssistantLine ? (
               <div className="mt-2">
-                <p className="text-[10px] uppercase tracking-wide text-zinc-600">Previous</p>
-                <p className="text-sm text-zinc-400">{lastAssistantLine}</p>
+                <p className="text-[10px] uppercase tracking-wide text-mute-2">Previous</p>
+                <p className="text-sm text-ink-2">{lastAssistantLine}</p>
               </div>
             ) : null}
             <div
-              className="mt-2 min-h-[72px] text-sm leading-relaxed text-zinc-100"
+              className="mt-2 min-h-[72px] text-sm leading-relaxed text-ink"
               title={glossMode === "hover" ? glossTitle : undefined}
             >
               {assistantDraft ? (
                 <p className="whitespace-pre-wrap">{assistantDraft}</p>
               ) : (
-                <p className="text-zinc-500">Assistant line…</p>
+                <p className="text-mute">Assistant line…</p>
               )}
               {glossMode === "always" ? (
-                <p className="mt-2 text-xs text-zinc-500">Gloss (placeholder M4)</p>
+                <p className="mt-2 text-xs text-mute">Gloss (placeholder M4)</p>
               ) : null}
             </div>
           </section>
 
-          <div className="flex flex-wrap gap-2 border-t border-zinc-800 pt-4">
+          <div className="flex flex-wrap gap-2 border-t border-rule pt-4">
             <button
               type="button"
-              className="rounded-full border border-zinc-700 px-4 py-1.5 text-xs text-zinc-300 hover:border-zinc-500"
+              className="rounded-full border border-rule-2 px-4 py-1.5 text-xs text-ink-2 hover:border-mute hover:text-ink"
               onClick={() => setToast("Aide « plus lent » — bientôt (M4)")}
             >
               Plus lent
             </button>
             <button
               type="button"
-              className="rounded-full border border-zinc-700 px-4 py-1.5 text-xs text-zinc-300 hover:border-zinc-500"
+              className="rounded-full border border-rule-2 px-4 py-1.5 text-xs text-ink-2 hover:border-mute hover:text-ink"
               onClick={() => setToast("Aide « répéter » — bientôt (M4)")}
             >
               Répéter
             </button>
             <button
               type="button"
-              className="rounded-full border border-zinc-700 px-4 py-1.5 text-xs text-zinc-300 hover:border-zinc-500"
+              className="rounded-full border border-rule-2 px-4 py-1.5 text-xs text-ink-2 hover:border-mute hover:text-ink"
               onClick={() =>
                 setToast("Aide « qu'est-ce qu'elle a dit ? » — bientôt (M4)")
               }
@@ -551,27 +547,27 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-xs uppercase tracking-wide text-zinc-500">
+            <label className="text-xs uppercase tracking-wide text-mute">
               Your message (French or English)
             </label>
             <textarea
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               rows={3}
-              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+              className="rounded-lg border border-rule-2 bg-canvas-3 px-3 py-2 text-sm text-ink outline-none focus:border-ink"
             />
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={() => void sendUserText()}
-                className="rounded-full bg-zinc-100 px-5 py-2 text-sm font-medium text-zinc-950 hover:bg-white"
+                className="bg-ink px-5 py-2 text-sm font-medium text-canvas transition-colors hover:bg-ink-2"
               >
                 Send
               </button>
               <button
                 type="button"
                 onClick={() => void endSession()}
-                className="rounded-full border border-zinc-600 px-5 py-2 text-sm font-medium text-zinc-200 hover:border-zinc-400"
+                className="border border-rule-2 px-5 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-mute hover:text-ink"
               >
                 End session
               </button>

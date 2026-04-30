@@ -47,19 +47,26 @@ export default function ScenariosPage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
+    <main className="mx-auto max-w-5xl px-6 py-12 sm:px-10">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Scenarios</h1>
-          <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-            Pick a situation, warm up your mic, then open the live tutor.             Configure <code className="text-zinc-300">GOOGLE_GENAI_API_KEY</code> for Live. For
-            audio chunks use <code className="text-zinc-300">AUDIO_STORAGE_BACKEND=local</code> or
-            AWS S3 (see README).
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-mute">Practice</p>
+          <h1 className="mt-2 font-display text-3xl tracking-[-0.02em] text-ink sm:text-4xl">Scenarios</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-2">
+            Pick a situation, warm up your mic, then open the live tutor. Configure{" "}
+            <code className="rounded bg-canvas-3 px-1.5 py-0.5 font-mono text-[12px] text-ink-2">
+              GOOGLE_GENAI_API_KEY
+            </code>{" "}
+            for Live. For audio chunks use{" "}
+            <code className="rounded bg-canvas-3 px-1.5 py-0.5 font-mono text-[12px] text-ink-2">
+              AUDIO_STORAGE_BACKEND=local
+            </code>{" "}
+            or AWS S3 (see README).
           </p>
         </div>
         <Link
           href="/dashboard"
-          className="text-sm text-zinc-500 underline-offset-4 hover:text-zinc-300 hover:underline"
+          className="text-sm text-mute underline-offset-4 transition-colors hover:text-ink hover:underline"
         >
           ← Dashboard
         </Link>
@@ -71,10 +78,10 @@ export default function ScenariosPage() {
             key={chip}
             type="button"
             onClick={() => setBand(chip)}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium ${
+            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
               band === chip
-                ? "bg-orange-600 text-white"
-                : "border border-zinc-700 text-zinc-300 hover:border-zinc-500"
+                ? "bg-ink text-canvas"
+                : "border border-rule-2 text-ink-2 hover:border-mute hover:text-ink"
             }`}
           >
             {chip === "Any" ? "Any level" : chip}
@@ -83,7 +90,7 @@ export default function ScenariosPage() {
       </div>
 
       {message ? (
-        <p className="mt-4 text-sm text-red-400" role="alert">
+        <p className="mt-4 text-sm text-wine-2" role="alert">
           {message}
         </p>
       ) : null}
@@ -92,18 +99,18 @@ export default function ScenariosPage() {
         {filtered.map((s) => (
           <li
             key={s.id}
-            className="flex flex-col rounded-xl border border-zinc-800 bg-zinc-900/40 p-5"
+            className="flex flex-col rounded-xl border border-rule bg-canvas-2/60 p-5 sm:p-6"
           >
-            <p className="text-xs uppercase tracking-wide text-zinc-500">{s.level}</p>
-            <h2 className="mt-1 text-lg font-medium text-zinc-100">{s.en}</h2>
-            <p className="text-sm text-zinc-400">{s.fr}</p>
-            <p className="mt-2 flex-1 text-sm leading-relaxed text-zinc-500">{s.desc}</p>
-            <p className="mt-3 text-xs text-zinc-600">{s.topics.join(" · ")}</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-mute">{s.level}</p>
+            <h2 className="mt-2 font-display-sm text-xl text-ink">{s.en}</h2>
+            <p className="text-sm text-ink-2">{s.fr}</p>
+            <p className="mt-2 flex-1 text-sm leading-relaxed text-mute">{s.desc}</p>
+            <p className="mt-3 text-xs text-mute-2">{s.topics.join(" · ")}</p>
             <button
               type="button"
               disabled={busyId !== null}
               onClick={() => void startScenario(s.id)}
-              className="mt-4 rounded-full bg-zinc-100 px-5 py-2 text-sm font-medium text-zinc-950 hover:bg-white disabled:opacity-50"
+              className="mt-4 inline-flex items-center justify-center bg-ink px-5 py-2 text-sm font-medium text-canvas transition-colors hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busyId === s.id ? "Starting…" : "Start"}
             </button>
