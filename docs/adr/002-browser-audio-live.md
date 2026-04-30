@@ -16,4 +16,4 @@
 
 ## References
 
-- Client shell: `app/(app)/live/[sessionId]/live-session-panel.tsx`.
+- Client shell: `components/live/live-session-panel.tsx` (route: `app/(immersive)/live/[sessionId]/page.tsx`).

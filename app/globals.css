@@ -41,6 +41,60 @@
   animation: page-enter 320ms ease-out both;
 }
 
+@keyframes breath {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.92;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+.breath {
+  animation: breath 4.2s ease-in-out infinite;
+}
+
+@keyframes caret-blink {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  61%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.caret-blink {
+  animation: caret-blink 1.1s steps(1) infinite;
+}
+
+/* Video-call vignette + active speaker (prototype session) */
+.vc-vignette {
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+@keyframes speaker-glow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(194, 65, 12, 0.4),
+      0 0 40px rgba(194, 65, 12, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(194, 65, 12, 0.6),
+      0 0 60px rgba(194, 65, 12, 0.35);
+  }
+}
+
+.speaker-glow {
+  animation: speaker-glow-pulse 2.4s ease-in-out infinite;
+}
+
 @layer components {
   .font-display {
     font-family: var(--font-fraunces), Georgia, "Times New Roman", serif;

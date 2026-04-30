@@ -20,4 +20,4 @@
 
 ## References
 
-- Implementation: `lib/providers/gemini-live-token.ts`, `app/api/realtime/token/route.ts`, `app/(app)/live/[sessionId]/live-session-panel.tsx`.
+- Implementation: `lib/providers/gemini-live-token.ts`, `app/api/realtime/token/route.ts`, `components/live/live-session-panel.tsx`.

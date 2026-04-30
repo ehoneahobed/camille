@@ -17,7 +17,7 @@
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | P0 — Bootstrap    | Done                                                                                                                                                                                                                                                                                                                                                            |
 | M0 — Foundation   | Done                                                                                                                                                                                                                                                                                                                                                            |
-| M1 — Live + turns | **Mostly done** — server token, `PracticeSession` APIs, `(app)/live/[sessionId]` client (Google GenAI Web), turn persistence, dashboard “Begin”. **Remaining for full M1 acceptance:** wire **microphone → Live** (M1-T06), optional **debounced batch flush** (M1-T07 uses turn boundaries today), manual ≥60s test. See `docs/adr/002-browser-audio-live.md`. |
+| M1 — Live + turns | **Mostly done** — server token, `PracticeSession` APIs, `(immersive)/live/[sessionId]` + `components/live/live-session-panel.tsx` (Google GenAI Web), turn persistence, dashboard start. **Remaining for full M1 acceptance:** wire **microphone → Live** (M1-T06), optional **debounced batch flush** (M1-T07 uses turn boundaries today), manual ≥60s test. See `docs/adr/002-browser-audio-live.md`. |
 | M2 — Audio + UX   | **Mostly done** — presign API, `useSessionRecorder`, mic pre-session + VU, scenarios grid + filters, live shell (timer, gloss, captions, help stubs), complete + transcript pages, `MAX_SESSION_MINUTES` on token mint, single-chunk finalize + ADR-003. **Follow-up:** multi-chunk remux worker, full concat before production scale, S3 lifecycle in infra. |
 | M3 — Diagnostics  | **In progress** — `POST /api/sessions/[id]/diagnose`, `after()` runner + stub JSON, guards (`audioS3Key` + turns), `/history`, `/sessions/[id]/diagnostic` (tabs + poll), transcript/complete wiring, optional `GET /api/cron/diagnostics`, ADR-004. **Remaining:** Azure pronunciation + Gemini grammar/vocab (M3-T05–T09), ADR-005 reference text. |
 
@@ -201,7 +201,7 @@ flowchart LR
 
 ### 5.2 Client: single-scenario live page
 
-- **M1-T04** — Route `(app)/live/[sessionId]/page.tsx` + dashboard **Begin** → `POST /api/sessions` → navigate.  
+- **M1-T04** — Route `(immersive)/live/[sessionId]/page.tsx` + dashboard start → `POST /api/sessions` → navigate.  
 - **M1-T05** — On mount: fetch token; initialise **Google GenAI** Live session in browser per ADR-001.  
 - **M1-T06** — Wire microphone; confirm audio playback from model. *(TEXT modality path shipped; mic + native duplex next.)*  
 - **M1-T07** — Capture transcript snippets from SDK events → debounced flush to `POST .../turns` (interval N seconds + on unmount). *(Flush on `turnComplete` + send today; add timer/unmount batch if desired.)*  

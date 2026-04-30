@@ -1,5 +1,6 @@
 "use client";
 
+import { IconArrow } from "@/components/icons";
 import { SCENARIOS } from "@/lib/scenarios/seed";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -38,28 +39,32 @@ export function StartPractice() {
   }
 
   return (
-    <div className="mt-10 rounded-xl border border-rule bg-canvas-2/50 p-6 sm:p-8">
-      <h2 className="font-display-sm text-xl text-ink">Start a practice session</h2>
-      <p className="mt-2 text-sm leading-relaxed text-mute">
-        Opens the Gemini Live tutor after a short mic check (configure{" "}
-        <code className="rounded bg-canvas-3 px-1.5 py-0.5 font-mono text-[12px] text-ink-2">
-          GOOGLE_GENAI_API_KEY
-        </code>{" "}
-        in{" "}
-        <code className="rounded bg-canvas-3 px-1.5 py-0.5 font-mono text-[12px] text-ink-2">.env</code>
-        ). Prefer the full grid?{" "}
-        <Link href="/scenarios" className="text-wine-2 underline-offset-2 transition-colors hover:text-wine hover:underline">
-          Browse scenarios
+    <div>
+      <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void onStart()}
+          className="inline-flex items-center justify-center gap-2 bg-ink px-8 py-4 text-[15px] font-medium tracking-[0.01em] text-canvas transition-colors hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {busy ? "Starting…" : "Start a session"}
+          {!busy ? <IconArrow size={15} /> : null}
+        </button>
+        <Link
+          href="/scenarios"
+          className="text-[13px] tracking-[0.01em] text-mute editorial-link transition-colors hover:text-ink"
+        >
+          Browse scenarios →
         </Link>
-        .
-      </p>
-      <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end">
-        <label className="flex flex-1 flex-col gap-2 text-[13px] text-mute">
+      </div>
+
+      <div className="mt-8 max-w-md">
+        <label className="flex flex-col gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-mute">
           Scenario
           <select
             value={scenarioId}
             onChange={(e) => setScenarioId(e.target.value)}
-            className="rounded-lg border border-rule-2 bg-canvas-3 px-3 py-2.5 text-ink outline-none transition-colors focus:border-ink"
+            className="rounded-lg border border-rule-2 bg-canvas-3 px-3 py-2.5 font-sans text-[14px] text-ink outline-none transition-colors focus:border-ink"
           >
             {SCENARIOS.map((s) => (
               <option key={s.id} value={s.id}>
@@ -68,15 +73,16 @@ export function StartPractice() {
             ))}
           </select>
         </label>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void onStart()}
-          className="inline-flex shrink-0 items-center justify-center bg-ink px-6 py-2.5 text-sm font-medium text-canvas transition-colors hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {busy ? "Starting…" : "Begin"}
-        </button>
+        <p className="mt-3 text-[12px] leading-relaxed text-mute">
+          Mic check on the next screen, then a full-screen call with Camille&apos;s 3D avatar. Requires{" "}
+          <code className="rounded bg-canvas-2 px-1.5 py-0.5 font-mono text-[11px] text-ink-2">
+            GOOGLE_GENAI_API_KEY
+          </code>{" "}
+          in{" "}
+          <code className="rounded bg-canvas-2 px-1.5 py-0.5 font-mono text-[11px] text-ink-2">.env</code>.
+        </p>
       </div>
+
       {message ? (
         <p className="mt-4 text-sm text-wine-2" role="alert">
           {message}

@@ -1,8 +1,8 @@
+import { LiveSessionPanel } from "@/components/live/live-session-panel";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { LiveSessionPanel } from "./live-session-panel";
 
 export default async function LiveSessionPage({
   params,
