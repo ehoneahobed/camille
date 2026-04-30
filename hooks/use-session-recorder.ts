@@ -5,6 +5,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const DEFAULT_SLICE = 5000;
 const MAX_RETRIES = 5;
 
+/** Presign / chunk PUT return this when the practice session is no longer `IN_PROGRESS`. */
+const SESSION_NOT_ACTIVE = "Session is not active";
+
+function isSessionNotActiveResponse(status: number, body: unknown): boolean {
+  if (status !== 409) return false;
+  if (typeof body !== "object" || body === null || !("error" in body)) return false;
+  return String((body as { error: unknown }).error) === SESSION_NOT_ACTIVE;
+}
+
 function sleep(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms));
 }
@@ -51,15 +60,20 @@ export function useSessionRecorder(options: UseSessionRecorderOptions) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, chunkIndex, contentType }),
       });
+      const presignBody = await presign.json().catch(async () => ({
+        error: await presign.text(),
+      }));
       if (!presign.ok) {
-        const msg = await presign.json().catch(async () => ({ error: await presign.text() }));
+        if (isSessionNotActiveResponse(presign.status, presignBody)) {
+          return;
+        }
         throw new Error(
-          typeof msg === "object" && msg && "error" in msg
-            ? String((msg as { error: unknown }).error)
+          typeof presignBody === "object" && presignBody && "error" in presignBody
+            ? String((presignBody as { error: unknown }).error)
             : `Presign ${presign.status}`,
         );
       }
-      const { url } = (await presign.json()) as { url: string; storage?: string };
+      const { url } = presignBody as { url: string; storage?: string };
 
       let lastErr: unknown;
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -70,6 +84,14 @@ export function useSessionRecorder(options: UseSessionRecorderOptions) {
             headers: { "Content-Type": contentType },
           });
           if (!put.ok) {
+            if (put.status === 409) {
+              const putBody = await put.json().catch(async () => ({
+                error: await put.text(),
+              }));
+              if (isSessionNotActiveResponse(put.status, putBody)) {
+                return;
+              }
+            }
             throw new Error(`PUT ${put.status}`);
           }
           console.info("[analytics] audio_chunk_uploaded", { sessionId, chunkIndex });
@@ -107,8 +129,12 @@ export function useSessionRecorder(options: UseSessionRecorderOptions) {
       const idx = nextChunkIndexRef.current++;
       queueRef.current = queueRef.current.then(() =>
         uploadChunk(idx, blob).catch((e) => {
+          const msg = e instanceof Error ? e.message : "Chunk upload failed";
+          if (msg === SESSION_NOT_ACTIVE) {
+            return;
+          }
           console.error(e);
-          setUploadError(e instanceof Error ? e.message : "Chunk upload failed");
+          setUploadError(msg);
         }),
       );
     };

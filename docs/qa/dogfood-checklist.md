@@ -6,6 +6,7 @@ Use this before calling the app “ready for daily learning.” Last aligned wit
 
 - [ ] `cp .env.example .env` and fill **`DATABASE_URL`**, **`BETTER_AUTH_SECRET`**, **`BETTER_AUTH_URL`**.
 - [ ] Set **`GOOGLE_GENAI_API_KEY`** (or `GEMINI_API_KEY`).
+- [ ] Optional voice duplex: **`GEMINI_LIVE_RESPONSE_MODALITIES=TEXT,AUDIO`** (speakers on; see `docs/adr/002-browser-audio-live.md`).
 - [ ] For session audio without AWS: **`AUDIO_STORAGE_BACKEND=local`** (and ensure `.data/session-audio/` is writable).
 - [ ] Optional: `RESEND_API_KEY` for magic links; otherwise confirm password sign-up works.
 

@@ -14,7 +14,7 @@
 
 **Mandated stack:** Next.js 16 (App Router), PostgreSQL (e.g. Neon), Prisma ORM, Better Auth (email + password **and** magic link), Resend (transactional email), Vercel (deployment baseline)
 
-**How to read requirement IDs:** `A-*` auth, `S-*` scenarios, `C-*` conversation, `AU-*` audio, `T-*` transcript, `D-*` diagnostic, `P-*` progress/history, `G-*` settings, `M-*` marketing.
+**How to read requirement IDs:** `A-`* auth, `S-*` scenarios, `C-*` conversation, `AU-*` audio, `T-*` transcript, `D-*` diagnostic, `P-*` progress/history, `G-*` settings, `M-*` marketing.
 
 ---
 
@@ -29,7 +29,7 @@ Single source of truth for **what** we build, **why**, and **acceptance-level** 
 
 ### 1.2 Lineage
 
-1. **In-repo prototype** (`index.html`, `src/*`): UX, scenarios, diagnostics layout, progress, settings, marketing.
+1. **In-repo prototype** (`index.html`, `src/`*): UX, scenarios, diagnostics layout, progress, settings, marketing.
 2. **v0.1 technical PRD** (Apr 27, 2026): Gemini Live token pattern, S3 + MediaRecorder, Azure + Gemini diagnostics, risks.
 
 **Conflict rule:** Camille **bilingual / multi-user / credentials + magic link** vision wins over v0.1’s single-user or French-only-only stance. v0.1 remains the **default engineering pattern** for realtime audio, storage, and diagnostics until a spike documents a change in an ADR.

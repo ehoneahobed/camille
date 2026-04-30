@@ -50,3 +50,11 @@ next-env.d.ts
 
 # Local session audio (AUDIO_STORAGE_BACKEND=local)
 /.data/
+
+# Agent / skills installers (reinstall with `npx skills add …` if needed)
+/.agents/
+/.claude/
+/.kiro/
+/.rovodev/
+/skills/
+skills-lock.json

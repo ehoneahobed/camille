@@ -1,4 +1,5 @@
 import { GoogleGenAI, Modality } from "@google/genai/node";
+import { liveResponseModalitiesFromEnv } from "@/lib/config/gemini-live-modalities";
 import { getGeminiApiKey, getLiveModelId } from "@/lib/config/live";
 import { buildLiveSystemInstruction } from "@/lib/prompts/live-system";
 
@@ -16,17 +17,6 @@ export type MintLiveTokenResult = {
   responseModalities: Modality[];
 };
 
-function parseModalities(): Modality[] {
-  const raw = process.env.GEMINI_LIVE_RESPONSE_MODALITIES ?? "TEXT";
-  const parts = raw.split(",").map((s) => s.trim().toUpperCase());
-  const out: Modality[] = [];
-  for (const p of parts) {
-    if (p === "AUDIO") out.push(Modality.AUDIO);
-    else if (p === "TEXT") out.push(Modality.TEXT);
-  }
-  return out.length ? out : [Modality.TEXT];
-}
-
 /**
  * Mints a short-lived Live API token (server-side only; never send the primary API key to the client).
  */
@@ -35,11 +25,11 @@ export async function mintGeminiLiveEphemeralToken(
 ): Promise<MintLiveTokenResult> {
   const model = getLiveModelId();
   const apiKey = getGeminiApiKey();
-  const responseModalities = parseModalities();
+  const responseModalities = liveResponseModalitiesFromEnv();
 
   const client = new GoogleGenAI({
     apiKey,
-    apiVersion: "v1alpha",
+    httpOptions: { apiVersion: "v1alpha" },
   });
 
   const systemInstruction = buildLiveSystemInstruction({
@@ -50,13 +40,19 @@ export async function mintGeminiLiveEphemeralToken(
 
   const token = await client.authTokens.create({
     config: {
-      uses: 1,
+      uses: 2,
       expireTime: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
       liveConnectConstraints: {
         model,
         config: {
           responseModalities,
           systemInstruction,
+          ...(responseModalities.includes(Modality.AUDIO)
+            ? {
+                inputAudioTranscription: {},
+                outputAudioTranscription: {},
+              }
+            : {}),
         },
       },
     },

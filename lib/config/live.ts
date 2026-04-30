@@ -1,7 +1,10 @@
 /**
  * Gemini Live configuration (see docs/adr/001-gemini-live-ephemeral-token.md).
+ *
+ * `gemini-live-2.5-flash-preview` was retired; use a current Live / native-audio
+ * model from https://ai.google.dev/gemini-api/docs/live-guide
  */
-export const DEFAULT_LIVE_MODEL = "gemini-live-2.5-flash-preview";
+export const DEFAULT_LIVE_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025";
 
 export function getGeminiApiKey(): string {
   const key = process.env.GOOGLE_GENAI_API_KEY ?? process.env.GEMINI_API_KEY;

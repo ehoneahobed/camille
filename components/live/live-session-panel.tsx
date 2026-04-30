@@ -1,7 +1,10 @@
 "use client";
 
 import { IconMic, IconPause, IconPlay } from "@/components/icons";
+import { useLiveRealtimeMic } from "@/hooks/use-live-realtime-mic";
 import { useSessionRecorder } from "@/hooks/use-session-recorder";
+import { ModelPcmPlaybackQueue } from "@/lib/live/model-pcm-playback";
+import { base64ToInt16Pcm } from "@/lib/live/pcm-audio";
 import {
   getMaxSessionMinutes,
   practiceElapsedMs,
@@ -12,6 +15,7 @@ import { GoogleGenAI, Modality, type Session } from "@google/genai/web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { RpmAvatarStage, type AvatarGender, type AvatarState } from "./rpm-avatar-stage";
 
 type Props = {
@@ -24,10 +28,21 @@ type GlossMode = "off" | "hover" | "always";
 
 function mapModalities(values: string[]): Modality[] {
   return values.map((m) => {
-    if (m === "AUDIO") {
+    const u = String(m).toUpperCase();
+    if (u === "AUDIO" || u.endsWith(".AUDIO")) {
       return Modality.AUDIO;
     }
     return Modality.TEXT;
+  });
+}
+
+/** Normalise modality strings from the token JSON for UI + mic hook. */
+function normalizeModalityStrings(raw: string[]): string[] {
+  return raw.map((m) => {
+    const u = String(m).toUpperCase();
+    if (u.endsWith("AUDIO")) return "AUDIO";
+    if (u.endsWith("TEXT")) return "TEXT";
+    return u;
   });
 }
 
@@ -43,10 +58,11 @@ function deriveAvatarState(
   assistantDraft: string,
   userInput: string,
   vuLevel: number,
+  modelAudioActive: boolean,
 ): AvatarState {
   if (phase !== "live") return "idle";
   if (/connecting|offline/i.test(statusLine)) return "thinking";
-  if (assistantDraft.trim().length > 0) return "speaking";
+  if (assistantDraft.trim().length > 0 || modelAudioActive) return "speaking";
   if (userInput.trim().length > 0 || vuLevel > 0.1) return "listening";
   return "listening";
 }
@@ -76,15 +92,30 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
   const [showHelp, setShowHelp] = useState(false);
   const [avatarGender, setAvatarGender] = useState<AvatarGender>("female");
   const [avatarSize, setAvatarSize] = useState(480);
+  const [liveSession, setLiveSession] = useState<Session | null>(null);
+  const [modalityStrings, setModalityStrings] = useState<string[]>(["TEXT"]);
+  const [modelAudioPulse, setModelAudioPulse] = useState(false);
+  /** Mic / realtime audio only after server `setupComplete` (avoids early chunks closing the socket). */
+  const [liveWsReady, setLiveWsReady] = useState(false);
+  /** Stops MediaRecorder before PATCH ends the practice session (avoids presign 409 race). */
+  const [recordingGate, setRecordingGate] = useState(true);
 
-  const liveRef = useRef<Session | null>(null);
   const assistantBufferRef = useRef("");
   const nextIndexRef = useRef(0);
+  const playbackRef = useRef(new ModelPcmPlaybackQueue());
+  const audioPulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useLiveRealtimeMic({
+    session: liveSession,
+    mediaStream,
+    enabled: phase === "live" && !paused && liveWsReady,
+    responseModalities: modalityStrings,
+  });
 
   const { uploadError, uploadedMaxIndex } = useSessionRecorder({
     sessionId,
     mediaStream,
-    active: phase === "live" && !paused,
+    active: phase === "live" && !paused && recordingGate,
     timesliceMs: 5000,
   });
 
@@ -220,6 +251,8 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
     }
 
     let cancelled = false;
+    let sessionHandle: Session | null = null;
+    const playbackForCleanup = playbackRef.current;
 
     async function run() {
       const res = await fetch(`/api/sessions/${sessionId}`);
@@ -264,30 +297,92 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
         };
 
         const modalities = mapModalities(responseModalities);
+        const modalityLabels = normalizeModalityStrings(responseModalities);
+        const voiceOut = modalities.includes(Modality.AUDIO);
 
         const ai = new GoogleGenAI({
           apiKey: token,
-          apiVersion: "v1alpha",
+          httpOptions: { apiVersion: "v1alpha" },
         });
 
-        const liveSession = await ai.live.connect({
+        const connected = await ai.live.connect({
           model,
           config: {
             responseModalities: modalities,
+            ...(voiceOut
+              ? {
+                  inputAudioTranscription: {},
+                  outputAudioTranscription: {},
+                }
+              : {}),
           },
           callbacks: {
             onopen: () => {
               if (!cancelled) {
-                setStatusLine("Connected — speak or type in French.");
+                setStatusLine(
+                  voiceOut
+                    ? "Connected — microphone streams to Live; speak French or type below."
+                    : "Connected — speak or type in French.",
+                );
               }
             },
             onmessage: (message) => {
-              const parts = message.serverContent?.modelTurn?.parts;
+              const raw = message as unknown as Record<string, unknown>;
+              if (raw.error != null && !cancelled) {
+                console.warn("[live] server message error", raw.error);
+                const err = raw.error as { message?: string };
+                const msg =
+                  typeof err?.message === "string"
+                    ? err.message
+                    : typeof raw.error === "string"
+                      ? raw.error
+                      : JSON.stringify(raw.error);
+                setError(msg.slice(0, 280));
+                setStatusLine("Offline");
+              }
+              if (message.setupComplete && !cancelled) {
+                setLiveWsReady(true);
+              }
+
+              const sc = message.serverContent;
+              if (sc?.interrupted) {
+                playbackRef.current.flush();
+              }
+
+              const outTx = sc?.outputTranscription?.text;
+              if (outTx) {
+                assistantBufferRef.current += outTx;
+                if (!cancelled) {
+                  setAssistantDraft(assistantBufferRef.current);
+                }
+              }
+
+              const parts = sc?.modelTurn?.parts;
               if (parts?.length) {
                 let delta = "";
                 for (const p of parts) {
                   if (p.text) {
                     delta += p.text;
+                  }
+                  const mime = p.inlineData?.mimeType ?? "";
+                  const b64 = p.inlineData?.data;
+                  if (b64 && mime.includes("pcm")) {
+                    try {
+                      const pcm = base64ToInt16Pcm(b64);
+                      playbackRef.current.enqueueInt16Pcm(pcm);
+                      if (!cancelled) {
+                        if (audioPulseTimerRef.current) {
+                          clearTimeout(audioPulseTimerRef.current);
+                        }
+                        setModelAudioPulse(true);
+                        audioPulseTimerRef.current = setTimeout(() => {
+                          setModelAudioPulse(false);
+                          audioPulseTimerRef.current = null;
+                        }, 450);
+                      }
+                    } catch (e) {
+                      console.warn("[live] pcm decode", e);
+                    }
                   }
                 }
                 if (delta) {
@@ -298,7 +393,7 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
                 }
               }
 
-              if (message.serverContent?.turnComplete) {
+              if (sc?.turnComplete) {
                 const text = assistantBufferRef.current.trim();
                 assistantBufferRef.current = "";
                 if (!cancelled) {
@@ -336,19 +431,36 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
                 setError(e.message || "Live connection error");
               }
             },
-            onclose: () => {
+            onclose: (ev) => {
               if (!cancelled) {
-                setStatusLine("Disconnected");
+                setLiveWsReady(false);
+                const code = ev?.code;
+                const reason =
+                  typeof ev?.reason === "string" && ev.reason.trim().length > 0
+                    ? ev.reason.trim().slice(0, 120)
+                    : "";
+                const detail =
+                  code != null && code !== 1000
+                    ? ` (close ${code}${reason ? `: ${reason}` : ""})`
+                    : reason
+                      ? ` (${reason})`
+                      : "";
+                console.warn("[live] websocket closed", { code, reason: ev?.reason });
+                setStatusLine(`Disconnected${detail}`);
               }
             },
           },
         });
 
         if (cancelled) {
-          liveSession.close();
+          connected.close();
           return;
         }
-        liveRef.current = liveSession;
+        sessionHandle = connected;
+        if (!cancelled) {
+          setModalityStrings(modalityLabels);
+          setLiveSession(connected);
+        }
       } catch (e) {
         console.error(e);
         if (!cancelled) {
@@ -362,14 +474,51 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
 
     return () => {
       cancelled = true;
-      liveRef.current?.close();
-      liveRef.current = null;
+      if (audioPulseTimerRef.current) {
+        clearTimeout(audioPulseTimerRef.current);
+        audioPulseTimerRef.current = null;
+      }
+      sessionHandle?.close();
+      sessionHandle = null;
+      setLiveSession(null);
+      setModalityStrings(["TEXT"]);
+      setLiveWsReady(false);
+      playbackForCleanup.flush();
     };
   }, [persistTurns, phase, sessionId]);
 
+  const sendHelpTurn = useCallback(
+    async (text: string, kind: string) => {
+      const sess = liveSession;
+      if (!sess) return;
+      const idx = nextIndexRef.current;
+      nextIndexRef.current = idx + 1;
+      setNextIndex(idx + 1);
+      try {
+        await persistTurns([
+          {
+            index: idx,
+            role: "USER",
+            text,
+            occurredAt: new Date().toISOString(),
+            kind,
+          },
+        ]);
+        sess.sendClientContent({
+          turns: text,
+          turnComplete: true,
+        });
+      } catch (e) {
+        console.error(e);
+        setError(e instanceof Error ? e.message : "Send failed");
+      }
+    },
+    [liveSession, persistTurns],
+  );
+
   async function sendUserText() {
     const trimmed = userInput.trim();
-    if (!trimmed || !liveRef.current) {
+    if (!trimmed || !liveSession) {
       return;
     }
     setUserInput("");
@@ -386,7 +535,7 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
           kind: "normal",
         },
       ]);
-      liveRef.current.sendClientContent({
+      liveSession.sendClientContent({
         turns: trimmed,
         turnComplete: true,
       });
@@ -397,8 +546,13 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
   }
 
   async function endSession() {
-    liveRef.current?.close();
-    liveRef.current = null;
+    flushSync(() => {
+      setRecordingGate(false);
+    });
+    liveSession?.close();
+    setLiveSession(null);
+    playbackRef.current.flush();
+    void playbackRef.current.dispose();
     await fetch(`/api/sessions/${sessionId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -417,8 +571,9 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
     assistantDraft,
     userInput,
     vuLevel,
+    modelAudioPulse,
   );
-  const aiSpeaking = assistantDraft.trim().length > 0;
+  const aiSpeaking = assistantDraft.trim().length > 0 || modelAudioPulse;
   const displayName = avatarGender === "female" ? "Camille" : "Léo";
 
   const captionPrimary =
@@ -624,6 +779,7 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
 
           <p className="relative z-10 mx-6 mt-1 font-mono text-[10px] text-mute sm:mx-10">
             {statusLine}
+            {modalityStrings.includes("AUDIO") ? " · Voice mode (mic + optional spoken reply)" : null}
             {uploadedMaxIndex >= 0 ? ` · chunks 0–${uploadedMaxIndex}` : null}
           </p>
 
@@ -643,22 +799,40 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
                 </button>
                 <button
                   type="button"
-                  className="border border-rule-2 px-3 py-2 font-mono text-[12px] uppercase tracking-[0.16em] text-ink-2 transition-colors hover:bg-canvas-3"
-                  onClick={() => setToast("Phrase bank — bientôt (M4)")}
+                  disabled={!liveSession || paused}
+                  className="border border-rule-2 px-3 py-2 font-mono text-[12px] uppercase tracking-[0.16em] text-ink-2 transition-colors hover:bg-canvas-3 disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={() =>
+                    void sendHelpTurn(
+                      "[Help] How do I say what I mean in French? Give one short natural phrase I can repeat.",
+                      "help-phrase",
+                    )
+                  }
                 >
                   How do I say…?
                 </button>
                 <button
                   type="button"
-                  className="border border-rule-2 px-3 py-2 font-mono text-[12px] uppercase tracking-[0.16em] text-ink-2 transition-colors hover:bg-canvas-3"
-                  onClick={() => setToast("« Plus lent » — bientôt (M4)")}
+                  disabled={!liveSession || paused}
+                  className="border border-rule-2 px-3 py-2 font-mono text-[12px] uppercase tracking-[0.16em] text-ink-2 transition-colors hover:bg-canvas-3 disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={() =>
+                    void sendHelpTurn(
+                      "[Help] Please slow down and use simpler French. One sentence at a time.",
+                      "help-slow",
+                    )
+                  }
                 >
                   Slow down
                 </button>
                 <button
                   type="button"
-                  className="border border-rule-2 px-3 py-2 font-mono text-[12px] uppercase tracking-[0.16em] text-ink-2 transition-colors hover:bg-canvas-3"
-                  onClick={() => setToast("« Répéter » — bientôt (M4)")}
+                  disabled={!liveSession || paused}
+                  className="border border-rule-2 px-3 py-2 font-mono text-[12px] uppercase tracking-[0.16em] text-ink-2 transition-colors hover:bg-canvas-3 disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={() =>
+                    void sendHelpTurn(
+                      "[Help] Please repeat your last French line, a bit more clearly.",
+                      "help-repeat",
+                    )
+                  }
                 >
                   Repeat
                 </button>

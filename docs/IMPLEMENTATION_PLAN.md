@@ -211,7 +211,7 @@ flowchart LR
 
 - **M1-T04** — Route `(immersive)/live/[sessionId]/page.tsx` + dashboard start → `POST /api/sessions` → navigate.  
 - **M1-T05** — On mount: fetch token; initialise **Google GenAI** Live session in browser per ADR-001.  
-- **M1-T06** — Wire microphone; confirm audio playback from model. *(Mic captured for VU + **local** `MediaRecorder` chunks; Live channel defaults to **TEXT** for reliable dogfood — set `GEMINI_LIVE_RESPONSE_MODALITIES=TEXT,AUDIO` only after ADR-002 validation.)*  
+- **M1-T06** — Wire microphone; confirm audio playback from model. *(VU + `MediaRecorder` unchanged; with **`GEMINI_LIVE_RESPONSE_MODALITIES=TEXT,AUDIO`**, mic streams **16 kHz PCM** via `sendRealtimeInput`, model **24 kHz PCM** plays locally; token + client enable input/output transcription when `AUDIO` is on — see ADR-002.)*  
 - **M1-T07** — Capture transcript snippets from SDK events → debounced flush to `POST .../turns` (interval N seconds + on unmount). *(Flush on `turnComplete` + send today; add timer/unmount batch if desired.)*  
 - **M1-T08** — `PATCH /api/sessions/[id]` — set `ENDED`, `endedAt`; reject if not owner.
 
