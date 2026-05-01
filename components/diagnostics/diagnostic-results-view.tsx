@@ -1,8 +1,19 @@
 "use client";
 
+import {
+  AggregateScoreCard,
+  GrammarReportView,
+  PronunciationReportView,
+  VocabularyReportView,
+} from "@/components/diagnostics/diagnostic-report-views";
 import type { DiagnosticSnapshot } from "@/lib/diagnostics/types";
+import {
+  parseGrammarReport,
+  parsePronunciationReport,
+  parseVocabularyReport,
+} from "@/lib/diagnostics/parse-report-json";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type SessionApiPayload = {
   id: string;
@@ -16,21 +27,13 @@ function isTerminal(status: string | undefined) {
   return status === "DONE" || status === "FAILED";
 }
 
-function JsonBlock({ value }: { value: unknown }) {
-  return (
-    <pre className="max-h-[480px] overflow-auto rounded-lg border border-rule bg-canvas-2/80 p-4 font-mono text-[12px] leading-relaxed text-ink-2">
-      {JSON.stringify(value, null, 2)}
-    </pre>
-  );
-}
-
 type DiagnosticResultsViewProps = {
   sessionId: string;
   initial: DiagnosticSnapshot | null;
 };
 
 /**
- * Polls `GET /api/sessions/[id]` while diagnostic is `QUEUED` or `RUNNING`; renders tabbed JSON when `DONE`.
+ * Polls `GET /api/sessions/[id]` while diagnostic is `QUEUED` or `RUNNING`; renders tabbed reports when `DONE`.
  */
 export function DiagnosticResultsView({ sessionId, initial }: DiagnosticResultsViewProps) {
   const [diagnostic, setDiagnostic] = useState<DiagnosticSnapshot | null>(initial);
@@ -54,6 +57,19 @@ export function DiagnosticResultsView({ sessionId, initial }: DiagnosticResultsV
   }, [diagnostic?.status, refresh]);
 
   const status = diagnostic?.status ?? "NOT_RUN";
+
+  const pronunciationParsed = useMemo(
+    () => parsePronunciationReport(diagnostic?.pronunciationScoresJson),
+    [diagnostic?.pronunciationScoresJson],
+  );
+  const grammarParsed = useMemo(
+    () => parseGrammarReport(diagnostic?.grammarFeedbackJson),
+    [diagnostic?.grammarFeedbackJson],
+  );
+  const vocabularyParsed = useMemo(
+    () => parseVocabularyReport(diagnostic?.vocabularyJson),
+    [diagnostic?.vocabularyJson],
+  );
 
   if (status === "QUEUED" || status === "RUNNING") {
     return (
@@ -85,31 +101,27 @@ export function DiagnosticResultsView({ sessionId, initial }: DiagnosticResultsV
     );
   }
 
-  const pronunciation = diagnostic?.pronunciationScoresJson ?? null;
-  const grammar = diagnostic?.grammarFeedbackJson ?? null;
-  const vocabulary = diagnostic?.vocabularyJson ?? null;
   const score = diagnostic?.aggregateScore;
 
-  return (
-    <div className="space-y-6">
-      {typeof score === "number" ? (
-        <p className="text-sm text-ink-2">
-          Aggregate score (placeholder until M3-T09):{" "}
-          <span className="font-medium text-ink">{score}</span>
-        </p>
-      ) : null}
+  const tabs = [
+    ["pronunciation", "Pronunciation"],
+    ["grammar", "Grammar"],
+    ["vocabulary", "Vocabulary"],
+  ] as const;
 
-      <div className="flex flex-wrap gap-2 border-b border-rule pb-2">
-        {(
-          [
-            ["pronunciation", "Pronunciation"],
-            ["grammar", "Grammar"],
-            ["vocabulary", "Vocabulary"],
-          ] as const
-        ).map(([id, label]) => (
+  return (
+    <div className="space-y-8">
+      {typeof score === "number" ? <AggregateScoreCard score={score} /> : null}
+
+      <div role="tablist" aria-label="Diagnostic sections" className="flex flex-wrap gap-2 border-b border-rule pb-2">
+        {tabs.map(([id, label]) => (
           <button
             key={id}
             type="button"
+            role="tab"
+            aria-selected={tab === id}
+            id={`diag-tab-${id}`}
+            aria-controls={`diag-panel-${id}`}
             onClick={() => setTab(id)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               tab === id ? "bg-ink text-canvas" : "text-mute hover:bg-canvas-2 hover:text-ink"
@@ -120,9 +132,33 @@ export function DiagnosticResultsView({ sessionId, initial }: DiagnosticResultsV
         ))}
       </div>
 
-      {tab === "pronunciation" ? <JsonBlock value={pronunciation} /> : null}
-      {tab === "grammar" ? <JsonBlock value={grammar} /> : null}
-      {tab === "vocabulary" ? <JsonBlock value={vocabulary} /> : null}
+      <div
+        role="tabpanel"
+        id="diag-panel-pronunciation"
+        aria-labelledby="diag-tab-pronunciation"
+        hidden={tab !== "pronunciation"}
+        className="min-h-[200px]"
+      >
+        <PronunciationReportView parsed={pronunciationParsed} />
+      </div>
+      <div
+        role="tabpanel"
+        id="diag-panel-grammar"
+        aria-labelledby="diag-tab-grammar"
+        hidden={tab !== "grammar"}
+        className="min-h-[200px]"
+      >
+        <GrammarReportView parsed={grammarParsed} />
+      </div>
+      <div
+        role="tabpanel"
+        id="diag-panel-vocabulary"
+        aria-labelledby="diag-tab-vocabulary"
+        hidden={tab !== "vocabulary"}
+        className="min-h-[200px]"
+      >
+        <VocabularyReportView parsed={vocabularyParsed} />
+      </div>
 
       <Link
         href={`/sessions/${sessionId}/transcript`}

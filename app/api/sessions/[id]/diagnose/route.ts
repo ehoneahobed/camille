@@ -29,12 +29,6 @@ export async function POST(
       { status: 400 },
     );
   }
-  if (!practice.audioS3Key) {
-    return NextResponse.json(
-      { error: "Diagnostics require merged audio (audioS3Key). Try a longer session or S3/local finalize." },
-      { status: 400 },
-    );
-  }
 
   const d = practice.diagnostic;
   if (d?.status === "DONE") {

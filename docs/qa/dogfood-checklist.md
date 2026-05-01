@@ -20,7 +20,7 @@ Use this before calling the app “ready for daily learning.” Last aligned wit
 2. [ ] Complete **onboarding** → land on **`/dashboard`**.
 3. [ ] Open **`/settings`**, change CEFR or voice, **Save**, reload page and confirm values stick.
 4. [ ] From dashboard, **Start a session** → mic check → **Start call**.
-5. [ ] Wait for **Connected**; send a short French line via **Message** → expect assistant reply in captions.
+5. [ ] Wait for **Connected**; send a short French line via **Message** or speak (with **`GEMINI_LIVE_RESPONSE_MODALITIES`** including **AUDIO**) → expect assistant reply in captions and **both** learner + Camille lines on the transcript after end.
 6. [ ] **End call** → **complete** page → **transcript** shows turns.
 7. [ ] **`/history`** lists the session; open **diagnostic** if `audioS3Key` exists (local mode usually does after finalize).
 8. [ ] **`/progress`** shows non-zero week minutes after at least one ended session.

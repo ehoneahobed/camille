@@ -61,7 +61,8 @@ export default async function HistoryPage() {
       <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-mute">History</p>
       <h1 className="mt-3 font-display text-3xl tracking-[-0.02em] text-ink sm:text-4xl">Your sessions</h1>
       <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-ink-2">
-        Ended sessions can run diagnostics when merged audio is available.
+        Ended sessions with saved turns can run diagnostics. Merged session audio improves pronunciation
+        scores; without it, a transcript-only proxy is used.
       </p>
 
       <div className="mt-10 overflow-x-auto rounded-lg border border-rule">

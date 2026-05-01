@@ -33,7 +33,8 @@ export default async function SessionTranscriptPage({
     SCENARIOS.find((s) => s.id === practice.scenarioId)?.en ?? practice.scenarioId;
 
   const ended = practice.status === "ENDED";
-  const canDiagnose = ended && Boolean(practice.audioS3Key) && practice._count.turns > 0;
+  /** Merged audio improves pronunciation; grammar/vocab still run from the transcript alone. */
+  const canDiagnose = ended && practice._count.turns > 0;
   const diag = practice.diagnostic;
 
   return (
@@ -93,8 +94,16 @@ export default async function SessionTranscriptPage({
               </Link>
             ) : null}
             {!canDiagnose ? (
-              <span className="self-center text-xs text-mute" title="Need merged audio and saved turns">
+              <span className="self-center text-xs text-mute" title="End the session and save at least one turn">
                 Diagnostic unavailable
+              </span>
+            ) : null}
+            {canDiagnose && !practice.audioS3Key ? (
+              <span
+                className="self-center text-xs text-mute"
+                title="Pronunciation uses a text-only proxy until session audio is merged"
+              >
+                No merged recording — transcript-only diagnostic
               </span>
             ) : null}
           </div>

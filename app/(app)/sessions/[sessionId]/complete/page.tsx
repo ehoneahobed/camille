@@ -36,7 +36,7 @@ export default async function SessionCompletePage({
   const scenarioLabel =
     SCENARIOS.find((s) => s.id === practice.scenarioId)?.en ?? practice.scenarioId;
 
-  const canRunDiagnostic = Boolean(practice.audioS3Key) && turnCount > 0;
+  const canRunDiagnostic = turnCount > 0;
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12 sm:px-10">
@@ -77,11 +77,7 @@ export default async function SessionCompletePage({
             type="button"
             disabled
             className="border border-rule px-6 py-2.5 text-sm font-medium text-mute-2"
-            title={
-              !practice.audioS3Key
-                ? "Merged audio required (finalize or wait for concat)."
-                : "At least one transcript turn is required."
-            }
+            title="At least one transcript turn is required to run a diagnostic."
           >
             Run diagnostic
           </button>

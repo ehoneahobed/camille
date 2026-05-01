@@ -10,17 +10,17 @@
 - **Deps** — `→` means “blocked until … completes”.  
 - **ADR** — short architecture decision record in `docs/adr/` when noted.
 
-### Progress (as of 2026-04-28 — **dogfood / daily learning**)
+### Progress (as of 2026-04-30 — **dogfood / daily learning**)
 
 
 | Phase             | Status                                                                                                                                                                                                                                                                                                                                                          |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | P0 — Bootstrap    | Done                                                                                                                                                                                                                                                                                                                                                            |
 | M0 — Foundation   | Done                                                                                                                                                                                                                                                                                                                                                            |
-| M1 — Live + turns | **Mostly done** — server token, `PracticeSession` APIs, `(immersive)/live/[sessionId]` + `components/live/live-session-panel.tsx` (Google GenAI Web), turn persistence, dashboard start. **Remaining for full M1 acceptance:** wire **microphone → Live** (M1-T06), optional **debounced batch flush** (M1-T07 uses turn boundaries today), manual ≥60s test. See `docs/adr/002-browser-audio-live.md`. |
+| M1 — Live + turns | **Done for dogfood** — ephemeral token (`v1alpha` + `httpOptions`), Live connect, **mic → `sendRealtimeInput`** (`use-live-realtime-mic.ts`), **model PCM playback**, **input + output transcription** (learner lines persisted from `inputTranscription` + Camille from model / `outputTranscription`), `setupComplete` mic gate, session **TEXT vs AUDIO** normalization (`gemini-live-modalities.ts`). **Optional polish:** M1-T07 **time-based debounced flush** (today: `turnComplete` + `finished` + batched USER/ASSISTANT); formal **≥60s** manual acceptance run. See `docs/adr/002-browser-audio-live.md`. |
 | M2 — Audio + UX   | **Mostly done** — presign API, `useSessionRecorder`, mic pre-session + VU, scenarios grid + filters, live shell (timer, gloss, captions, help stubs), complete + transcript pages, `MAX_SESSION_MINUTES` on token mint, single-chunk finalize + ADR-003. **Follow-up:** multi-chunk remux worker, full concat before production scale, S3 lifecycle in infra. |
-| M3 — Diagnostics  | **In progress** — `POST /api/sessions/[id]/diagnose`, `after()` runner + stub JSON, guards (`audioS3Key` + turns), `/history`, `/sessions/[id]/diagnostic` (tabs + poll), transcript/complete wiring, optional `GET /api/cron/diagnostics`, ADR-004. **Remaining:** Azure pronunciation + Gemini grammar/vocab (M3-T05–T09), ADR-005 reference text. |
-| **Dogfood v0**    | **Active** — Goal: ship a **credible daily practice loop** before chasing full PRD “Must” table. Checklist: `docs/qa/dogfood-checklist.md`. Env: `DATABASE_URL`, `BETTER_AUTH_*`, `GOOGLE_GENAI_API_KEY`; recommend **`AUDIO_STORAGE_BACKEND=local`** until S3+CORS are verified. Live defaults to **TEXT** modality (M1-T06 = mic → model audio still open). |
+| M3 — Diagnostics  | **In progress** — `POST /api/sessions/[id]/diagnose`, `after()` runner + **stub** JSON, guards (`audioS3Key` + turns), `/history`, `/sessions/[id]/diagnostic` (tabs + poll), transcript/complete wiring, optional `GET /api/cron/diagnostics`, ADR-004. **Remaining:** Azure pronunciation + Gemini grammar/vocab (M3-T05–T09), ADR-005 reference text. |
+| **Dogfood v0**    | **Active** — Checklist: `docs/qa/dogfood-checklist.md`. Env: `DATABASE_URL`, `BETTER_AUTH_*`, `GOOGLE_GENAI_API_KEY`; recommend **`AUDIO_STORAGE_BACKEND=local`** until S3+CORS are verified. Default Live modality **TEXT**; set **`GEMINI_LIVE_RESPONSE_MODALITIES=TEXT,AUDIO`** (or `AUDIO`) for voice duplex after validating in your browser. |
 
 
 ### Focus — What “ready to learn” means right now
@@ -28,7 +28,7 @@
 1. **Account & data** — Postgres migrated; sign-up / sign-in / onboarding / **Settings** (`/settings`) persist `UserSettings` used when minting Live tokens.  
 2. **Practice loop** — Dashboard → start session → mic check → **immersive live** (Gemini Live + turns + optional **local** session audio) → end → complete / transcript / history.  
 3. **Feedback loop** — Diagnostics UI works with **stub scores** until M3-T05–T09; still useful to rehearse “session → review” behaviour.  
-4. **Honest gaps** — Typed + caption conversation is the reliable path today; **set `GEMINI_LIVE_RESPONSE_MODALITIES=TEXT,AUDIO` only after** validating browser + model audio per ADR-002. Streak / heatmaps / gloss / help intents remain M4.
+4. **Honest gaps** — Voice duplex + transcripts are implemented but **browser / model / account dependent**; keep ADR-002 env notes when debugging. **Full gloss UI**, **help beyond structured Live messages**, streak / heatmaps / richer **Progress** charts remain **M4**. Diagnostics scores remain **stub** until **M3-T05–T09**.
 
 ---
 

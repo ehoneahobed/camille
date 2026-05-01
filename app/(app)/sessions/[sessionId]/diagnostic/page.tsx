@@ -37,7 +37,7 @@ export default async function SessionDiagnosticPage({
     SCENARIOS.find((s) => s.id === practice.scenarioId)?.en ?? practice.scenarioId;
 
   const turnCount = practice._count.turns;
-  const canDiagnose = Boolean(practice.audioS3Key) && turnCount > 0;
+  const canDiagnose = turnCount > 0;
   const ds = practice.diagnostic?.status;
   const showRunDiagnostic =
     canDiagnose &&
@@ -60,11 +60,16 @@ export default async function SessionDiagnosticPage({
 
       {!canDiagnose ? (
         <p className="mt-8 text-sm text-ink-2">
-          Diagnostics need merged audio and at least one transcript turn.{" "}
-          {!practice.audioS3Key ? "Audio is not finalized yet." : "Save turns during the session."}
+          Diagnostics need at least one saved transcript turn from this session.
         </p>
       ) : showRunDiagnostic ? (
-        <div className="mt-8">
+        <div className="mt-8 space-y-3">
+          {!practice.audioS3Key ? (
+            <p className="text-sm text-mute">
+              No merged recording for this session — pronunciation will use a transcript-only estimate; grammar
+              and vocabulary still use the full transcript.
+            </p>
+          ) : null}
           <RunDiagnosticButton sessionId={sessionId} />
         </div>
       ) : null}

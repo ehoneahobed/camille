@@ -1,8 +1,21 @@
 import { prisma } from "@/lib/db";
+import { computeAggregateDiagnosticScore } from "@/lib/diagnostics/aggregate-score";
+import { runGrammarAndVocabularyPass } from "@/lib/diagnostics/grammar";
+import { loadSessionAudioForDiagnostics } from "@/lib/diagnostics/load-session-audio";
+import { runGeminiPronunciationTranscriptProxy } from "@/lib/providers/gemini-pronunciation-assessment";
+import { runSessionPronunciationAssessment } from "@/lib/providers/pronunciation";
+import type { PronunciationScoresV1 } from "@/lib/diagnostics/schemas";
+
+function formatTranscriptLines(
+  turns: Array<{ index: number; role: string; text: string }>,
+): string {
+  return turns.map((t) => `[${t.index}] ${t.role}: ${t.text}`).join("\n");
+}
 
 /**
- * Picks one `QUEUED` diagnostic row, flips to `RUNNING`, then fills stub results (M3).
- * Azure pronunciation + Gemini grammar/vocab ship in M3-T05–T08; this job proves the pipeline + UI.
+ * Picks one `QUEUED` diagnostic row, flips to `RUNNING`, loads session audio + turns,
+ * then runs pronunciation (audio when `audioS3Key` exists; otherwise transcript-only Gemini proxy)
+ * and Gemini grammar/vocabulary.
  */
 export async function runDiagnosticForSession(sessionId: string): Promise<void> {
   const claimed = await prisma.diagnostic.updateMany({
@@ -18,19 +31,13 @@ export async function runDiagnosticForSession(sessionId: string): Promise<void> 
       where: { id: sessionId },
       include: {
         turns: { orderBy: { index: "asc" } },
+        user: { include: { settings: true } },
       },
     });
     if (!practice) {
       await prisma.diagnostic.update({
         where: { sessionId },
         data: { status: "FAILED", error: "Session missing" },
-      });
-      return;
-    }
-    if (!practice.audioS3Key) {
-      await prisma.diagnostic.update({
-        where: { sessionId },
-        data: { status: "FAILED", error: "Missing audioS3Key (finalize audio first)" },
       });
       return;
     }
@@ -48,28 +55,40 @@ export async function runDiagnosticForSession(sessionId: string): Promise<void> 
       .map((t) => t.text)
       .join("\n");
 
-    const pronunciationScoresJson = {
-      v: 1,
-      note: "Azure Speech pronunciation assessment not configured (M3-T05).",
-      placeholder: true,
-    };
+    const fullTranscript = formatTranscriptLines(practice.turns);
+    const learnerCefr = practice.user.settings?.startingCefr ?? "B1";
 
-    const grammarFeedbackJson = {
-      v: 1,
-      note: "Gemini Flash grammar pass not configured (M3-T07).",
-      transcriptPreview: userLines.slice(0, 500),
-      items: [] as { line: string; hint: string }[],
-    };
+    const grammarPromise = runGrammarAndVocabularyPass({
+      fullTranscript,
+      learnerCefr,
+    });
 
-    const vocabularyJson = {
-      v: 1,
-      comfortable: [] as string[],
-      stumbled: [] as string[],
-      note: "Structured vocabulary pass pending (M3-T08).",
-    };
+    const pronunciationPromise: Promise<PronunciationScoresV1> = (async () => {
+      const key = practice.audioS3Key?.trim();
+      if (!key) {
+        return runGeminiPronunciationTranscriptProxy(userLines);
+      }
+      const audioBlob = await loadSessionAudioForDiagnostics(key);
+      return runSessionPronunciationAssessment({
+        audioBytes: audioBlob.bytes,
+        mimeType: audioBlob.mimeType,
+        referenceText: userLines,
+      });
+    })();
 
-    /** Simple placeholder until Azure + Gemini scores exist (M3-T09). */
-    const aggregateScore = 0;
+    const [pronunciationScoresJson, grammarBundle] = await Promise.all([
+      pronunciationPromise,
+      grammarPromise,
+    ]);
+
+    const grammarFeedbackJson = grammarBundle.grammar;
+    const vocabularyJson = grammarBundle.vocabulary;
+
+    const aggregateScore = computeAggregateDiagnosticScore({
+      pronunciation: pronunciationScoresJson,
+      grammar: grammarFeedbackJson,
+      vocabulary: vocabularyJson,
+    });
 
     await prisma.diagnostic.update({
       where: { sessionId },
