@@ -46,6 +46,19 @@ function normalizeModalityStrings(raw: string[]): string[] {
   });
 }
 
+/** Wire JSON may use camelCase or snake_case for transcription fields. */
+type TranscriptionChunk = { text?: string; finished?: boolean };
+
+function readInputTranscription(
+  serverContent: unknown,
+): TranscriptionChunk | undefined {
+  if (!serverContent || typeof serverContent !== "object") return undefined;
+  const o = serverContent as Record<string, unknown>;
+  const raw = o.inputTranscription ?? o.input_transcription;
+  if (!raw || typeof raw !== "object") return undefined;
+  return raw as TranscriptionChunk;
+}
+
 function formatElapsed(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -101,6 +114,8 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
   const [recordingGate, setRecordingGate] = useState(true);
 
   const assistantBufferRef = useRef("");
+  /** Buffered `inputAudioTranscription` text until `finished` or assistant `turnComplete`. */
+  const userTranscriptBufferRef = useRef("");
   const nextIndexRef = useRef(0);
   const playbackRef = useRef(new ModelPcmPlaybackQueue());
   const audioPulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -254,7 +269,35 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
     let sessionHandle: Session | null = null;
     const playbackForCleanup = playbackRef.current;
 
+    function flushVoiceUserTranscript() {
+      const text = userTranscriptBufferRef.current.trim();
+      if (!text || cancelled) {
+        return;
+      }
+      userTranscriptBufferRef.current = "";
+      const idx = nextIndexRef.current;
+      nextIndexRef.current = idx + 1;
+      if (!cancelled) {
+        setNextIndex(idx + 1);
+      }
+      void persistTurns([
+        {
+          index: idx,
+          role: "USER",
+          text,
+          occurredAt: new Date().toISOString(),
+          kind: "voice-transcription",
+        },
+      ]).catch((e) => {
+        console.error(e);
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Turn save failed");
+        }
+      });
+    }
+
     async function run() {
+      userTranscriptBufferRef.current = "";
       const res = await fetch(`/api/sessions/${sessionId}`);
       if (!res.ok) {
         if (!cancelled) {
@@ -357,6 +400,14 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
                 }
               }
 
+              const inTx = readInputTranscription(sc);
+              if (inTx?.text) {
+                userTranscriptBufferRef.current += inTx.text;
+              }
+              if (inTx?.finished === true) {
+                flushVoiceUserTranscript();
+              }
+
               const parts = sc?.modelTurn?.parts;
               if (parts?.length) {
                 let delta = "";
@@ -394,29 +445,53 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
               }
 
               if (sc?.turnComplete) {
-                const text = assistantBufferRef.current.trim();
+                const userText = userTranscriptBufferRef.current.trim();
+                userTranscriptBufferRef.current = "";
+                const assistantText = assistantBufferRef.current.trim();
                 assistantBufferRef.current = "";
                 if (!cancelled) {
                   setAssistantDraft("");
                 }
-                if (text) {
+
+                const batch: {
+                  index: number;
+                  role: "USER" | "ASSISTANT";
+                  text: string;
+                  occurredAt: string;
+                  kind: string;
+                }[] = [];
+
+                if (userText) {
+                  const uIdx = nextIndexRef.current;
+                  nextIndexRef.current = uIdx + 1;
+                  batch.push({
+                    index: uIdx,
+                    role: "USER",
+                    text: userText,
+                    occurredAt: new Date().toISOString(),
+                    kind: "voice-transcription",
+                  });
+                }
+                if (assistantText) {
                   if (!cancelled) {
-                    setLastAssistantLine(text);
+                    setLastAssistantLine(assistantText);
                   }
-                  const idx = nextIndexRef.current;
-                  nextIndexRef.current = idx + 1;
+                  const aIdx = nextIndexRef.current;
+                  nextIndexRef.current = aIdx + 1;
+                  batch.push({
+                    index: aIdx,
+                    role: "ASSISTANT",
+                    text: assistantText,
+                    occurredAt: new Date().toISOString(),
+                    kind: "normal",
+                  });
+                }
+
+                if (batch.length > 0) {
                   if (!cancelled) {
-                    setNextIndex(idx + 1);
+                    setNextIndex(nextIndexRef.current);
                   }
-                  void persistTurns([
-                    {
-                      index: idx,
-                      role: "ASSISTANT",
-                      text,
-                      occurredAt: new Date().toISOString(),
-                      kind: "normal",
-                    },
-                  ]).catch((e) => {
+                  void persistTurns(batch).catch((e) => {
                     console.error(e);
                     if (!cancelled) {
                       setError(e instanceof Error ? e.message : "Turn save failed");
@@ -483,6 +558,7 @@ export function LiveSessionPanel({ sessionId, scenarioId, startedAt }: Props) {
       setLiveSession(null);
       setModalityStrings(["TEXT"]);
       setLiveWsReady(false);
+      userTranscriptBufferRef.current = "";
       playbackForCleanup.flush();
     };
   }, [persistTurns, phase, sessionId]);
