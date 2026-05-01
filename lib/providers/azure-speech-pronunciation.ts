@@ -30,6 +30,10 @@ export function isWavContainer(buffer: Buffer): boolean {
  * Session audio from the browser is usually **WebM**; this path runs only when merged audio is WAV
  * (e.g. future concat/remux pipeline) and `AZURE_SPEECH_*` env vars are set.
  *
+ * **Limitation:** `ReferenceText` is compared to the audio. If the caller passes live-caption USER text
+ * that mis-transcribes speech, Azure scores can be unfairly low. Prefer Gemini multimodal pronunciation
+ * for learner sessions unless reference text is verified.
+ *
  * @see https://learn.microsoft.com/en-us/azure/ai-services/speech-service/rest-speech-to-text-short
  */
 export async function runAzureShortAudioPronunciationAssessment(input: {

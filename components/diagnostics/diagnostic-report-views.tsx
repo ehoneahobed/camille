@@ -111,6 +111,14 @@ export function PronunciationReportView({ parsed }: { parsed: ParsedReport<Pronu
         ) : null}
       </div>
 
+      {transcriptOnly ? null : (
+        <p className="text-xs leading-relaxed text-mute">
+          This pass uses your <span className="text-ink-2">session recording</span> as the main signal. The
+          &ldquo;You&rdquo; lines in the transcript are live captions and often mis-hear words; the coach is
+          instructed to trust the audio when they disagree.
+        </p>
+      )}
+
       <div className="grid gap-8 sm:grid-cols-[minmax(0,200px)_1fr] sm:items-start">
         <div className="rounded-xl border border-rule bg-canvas-2/60 p-5 text-center sm:text-left">
           <p className="font-mono text-[10px] uppercase tracking-wider text-mute">Overall</p>
@@ -180,6 +188,11 @@ export function GrammarReportView({ parsed }: { parsed: ParsedReport<GrammarFeed
 
   return (
     <div className="space-y-8">
+      <p className="rounded-lg border border-rule-2 bg-canvas-3/40 px-3 py-2.5 text-xs leading-relaxed text-mute">
+        USER lines come from live speech-to-text and may not match what you said. The coach uses
+        Camille&apos;s replies and flow to reduce false corrections when the text looks like a
+        mistranscription.
+      </p>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-wider text-mute">Grammar quality</p>
